@@ -1,0 +1,907 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ORCA — OOUX object maps</title>
+<style>
+:root {
+  --bg: #fbfbfa; --panel: #fff; --ink: #1c1c1a; --muted: #6b6b66; --faint: #93938c;
+  --line: #e4e4df; --line-strong: #cfcfc8; --accent: #2b6cb0; --accent-soft: #eaf2fb;
+  --warn: #b7791f; --warn-soft: #fdf6e7; --danger: #9b2c2c; --danger-soft: #fdeaea;
+  --signed: #2f6b4f; --signed-soft: #e9f4ee;
+  --core: #d9a441; --meta: #c96a6a; --action: #7c6bb8; --nested: #3d7fae;
+  --radius: 8px; --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme=light]) {
+    --bg: #17171a; --panel: #1e1e22; --ink: #e8e8e4; --muted: #9a9a94; --faint: #6e6e68;
+    --line: #2e2e34; --line-strong: #43434a; --accent: #6aa5dd; --accent-soft: #1c2a38;
+    --warn: #d9a441; --warn-soft: #2c2517; --danger: #e08585; --danger-soft: #2e1c1c;
+    --signed: #6cc39a; --signed-soft: #16261e;
+  }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 14px/1.55 ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+  display: flex; flex-direction: column; }
+button { font: inherit; color: inherit; cursor: pointer; }
+.btn { background: var(--panel); border: 1px solid var(--line-strong); border-radius: 6px; padding: 5px 11px; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn.primary:disabled { opacity: .4; cursor: default; background: var(--line); color: var(--muted); border-color: var(--line-strong); }
+.btn.danger:hover { border-color: var(--danger); color: var(--danger); }
+.btn.sm { padding: 3px 8px; font-size: 12px; }
+
+header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 9px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.brand { font-weight: 700; letter-spacing: .04em; font-size: 12px; color: var(--muted); text-transform: uppercase; }
+.filename { font-weight: 600; }
+.spacer { flex: 1; }
+.headline { font-variant-numeric: tabular-nums; font-size: 13px;
+  background: var(--signed-soft); border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px; }
+.headline b { color: var(--signed); }
+.seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 6px; overflow: hidden; }
+.seg button { background: var(--panel); border: 0; padding: 5px 10px; font-size: 13px; }
+.seg button[aria-pressed=true] { background: var(--accent); color: #fff; }
+.status { font-size: 12px; color: var(--muted); }
+.status.dirty { color: var(--warn); font-weight: 600; }
+
+.banner { padding: 10px 16px; font-size: 13px; border-bottom: 1px solid var(--line); position: relative; }
+.banner.err { background: var(--danger-soft); color: var(--danger); }
+.banner.warn { background: var(--warn-soft); color: var(--warn); }
+.banner.ok { background: var(--signed-soft); color: var(--signed); }
+.banner code { font-family: var(--mono); font-size: 12px; }
+.banner .x { position: absolute; right: 10px; top: 7px; border: 0; background: none; opacity: .6; }
+
+main { flex: 1; display: flex; min-height: 0; }
+#rail { width: 248px; flex: none; border-right: 1px solid var(--line); background: var(--panel); overflow-y: auto; padding: 10px; }
+#stage { flex: 1; overflow-y: auto; padding: 20px 26px 90px; }
+.rail-h { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--faint);
+  margin: 12px 6px 5px; display: flex; align-items: center; gap: 6px; }
+.rail-h .spacer { flex: 1; }
+.rail-item { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  background: none; border: 0; border-radius: 6px; padding: 5px 7px; font-size: 13px; }
+.rail-item:hover { background: var(--accent-soft); }
+.rail-item[aria-current=true] { background: var(--accent); color: #fff; }
+.rail-item .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rail-item .ct { font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
+.rail-item[aria-current=true] .ct { color: #dbe9f7; }
+.rail-item.muted .nm { color: var(--faint); }
+
+.sigbar { display: flex; height: 5px; border-radius: 3px; overflow: hidden; background: var(--line); }
+.sigbar i { display: block; height: 100%; background: var(--signed); }
+
+.group-h { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--faint); margin: 18px 0 9px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); gap: 11px; }
+.mini { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 11px 13px; text-align: left; width: 100%; }
+.mini:hover { border-color: var(--accent); }
+.mini h4 { margin: 0 0 3px; font-size: 14px; }
+.mini .def { font-size: 12px; color: var(--muted); margin: 0 0 9px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.mini .counts { display: flex; gap: 9px; font-size: 11px; color: var(--faint); margin-top: 7px; font-variant-numeric: tabular-nums; }
+
+/* card -------------------------------------------------------------------- */
+.cardnav { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; max-width: 980px; }
+.cardnav .mid { flex: 1; text-align: center; font-size: 12px; color: var(--faint); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 24px 28px; max-width: 980px; }
+.kicker { font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--faint); }
+.card hr { border: 0; border-top: 1px solid var(--line); margin: 18px 0; }
+.sec-h { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--faint);
+  margin: 0 0 8px; display: flex; align-items: center; gap: 8px; }
+.sec-h .spacer { flex: 1; }
+.namein { font-size: 27px; font-weight: 700; letter-spacing: -.01em; width: 100%;
+  border: 1px solid transparent; background: none; color: inherit; border-radius: 6px; padding: 3px 6px; font-family: inherit; }
+.namein:hover { border-color: var(--line); }
+.namein:focus { border-color: var(--accent); outline: none; background: var(--bg); }
+.ta { width: 100%; border: 1px solid var(--line); background: var(--bg); border-radius: 6px;
+  padding: 8px 9px; font: inherit; color: inherit; resize: vertical; }
+.ta:focus { border-color: var(--accent); outline: none; }
+
+table.rows { width: 100%; border-collapse: collapse; }
+table.rows th { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--faint);
+  text-align: left; font-weight: 600; padding: 0 6px 5px; }
+table.rows td { padding: 2px 0; border-top: 1px solid var(--line); vertical-align: top; }
+tr.signed td { background: var(--signed-soft); }
+tr.rowdirty td { background: var(--warn-soft); }
+.cell { width: 100%; border: 1px solid transparent; background: none; border-radius: 5px;
+  padding: 5px 6px; font: inherit; color: inherit; }
+.cell:hover:not(:disabled) { border-color: var(--line); }
+.cell:focus { border-color: var(--accent); outline: none; background: var(--bg); }
+.cell:disabled { opacity: .85; cursor: default; }
+.cell.small { font-size: 12px; color: var(--muted); }
+.cell.unasked { background-image: repeating-linear-gradient(45deg, transparent, transparent 4px, var(--line) 4px, var(--line) 5px); }
+select.cell { appearance: none; }
+.qual { font-size: 11px; margin-top: 2px; }
+.lockbtn { border: 1px solid var(--line-strong); background: var(--panel); border-radius: 5px; padding: 3px 8px; font-size: 12px; white-space: nowrap; }
+.lockbtn.on { background: var(--signed); border-color: var(--signed); color: #fff; }
+.rowbtn { border: 0; background: none; color: var(--faint); padding: 4px 6px; border-radius: 5px; }
+.rowbtn:hover { background: var(--danger-soft); color: var(--danger); }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.chip { font-size: 11px; border-radius: 999px; padding: 1px 9px; border: 1px solid var(--nested);
+  color: var(--nested); background: none; }
+.chip:hover { background: var(--accent-soft); }
+.chip.ghost { border-color: var(--line-strong); color: var(--faint); border-style: dashed; cursor: default; }
+.backlink { display: flex; gap: 8px; align-items: baseline; padding: 5px 0; border-top: 1px solid var(--line); font-size: 13px; }
+.backlink button { border: 0; background: none; color: var(--accent); padding: 0; font-weight: 600; }
+.backlink .c { font-size: 11px; color: var(--faint); }
+.empty-note { color: var(--faint); font-style: italic; font-size: 13px; }
+.notes p { margin: 5px 0; font-size: 13px; }
+.notes .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--faint); margin-right: 7px; }
+
+/* source view ------------------------------------------------------------- */
+pre.source { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 16px 18px; overflow-x: auto; font-family: var(--mono); font-size: 12px; line-height: 1.65; margin: 0; }
+pre.source .ln { color: var(--faint); user-select: none; display: inline-block; width: 3.2em; }
+pre.source mark { background: var(--accent-soft); color: inherit; }
+
+/* confidence mode: what have we signed off on? ---------------------------- */
+body[data-mode=confidence] tr:not(.signed) { opacity: .28; }
+body[data-mode=confidence] .mini[data-signed="0"] { opacity: .38; }
+
+body[data-present=true] header, body[data-present=true] #rail { display: none; }
+body[data-present=true] #stage { padding: 34px; display: flex; flex-direction: column; align-items: center; }
+body[data-present=true] .card { max-width: 1100px; width: 100%; font-size: 17px; }
+body[data-present=true] .namein { font-size: 42px; }
+.exit-present { display: none; position: fixed; top: 14px; right: 16px; }
+body[data-present=true] .exit-present { display: block; }
+
+.welcome { max-width: 620px; margin: 8vh auto; text-align: center; }
+.welcome h1 { font-size: 30px; margin-bottom: 6px; }
+.welcome p { color: var(--muted); }
+.kbd { font-family: var(--mono); font-size: 11px; border: 1px solid var(--line-strong);
+  border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="brand">ORCA</span>
+  <span class="filename" id="fileName">no folder open</span>
+  <span class="status" id="status"></span>
+  <span class="spacer"></span>
+  <span class="headline" id="headline"></span>
+  <div class="seg" id="modeSeg">
+    <button data-mode="normal" aria-pressed="true">All</button>
+    <button data-mode="confidence" aria-pressed="false">Signed off</button>
+  </div>
+  <div class="seg" id="viewSeg">
+    <button data-view="map" aria-pressed="true">Map</button>
+    <button data-view="card" aria-pressed="false">Card</button>
+    <button data-view="source" aria-pressed="false">Source</button>
+  </div>
+  <button class="btn" id="presentBtn">Present</button>
+  <button class="btn" id="openBtn">Open folder</button>
+  <button class="btn primary" id="saveBtn" disabled>Save</button>
+</header>
+
+<div id="banners"></div>
+
+<main>
+  <nav id="rail"></nav>
+  <section id="stage"></section>
+</main>
+
+<button class="btn exit-present" id="exitPresent">Exit present</button>
+
+<script type="module">
+import {
+  parseDocument, serializeDocument, verifyRoundTrip, refreshObjects,
+  slug, CARDINALITIES, composeCardinality, parseCardinality,
+  signOffCol, addSignOffColumn, isSigned, signRow, unsignRow,
+  addObject, removeObject, renameObject, setNote, backlinks, blankMap,
+} from './parser.js';
+
+/* ===========================================================================
+   fs
+   =========================================================================== */
+const IDB = 'ooux', STORE = 'kv';
+function idb() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(IDB, 1);
+    r.onupgradeneeded = () => r.result.createObjectStore(STORE);
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+async function kv(mode, fn) {
+  const db = await idb();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(STORE, mode);
+    const req = fn(tx.objectStore(STORE));
+    tx.oncomplete = () => res(req && 'result' in req ? req.result : undefined);
+    tx.onerror = () => rej(tx.error);
+  });
+}
+const kvGet = (k) => kv('readonly', (s) => s.get(k));
+const kvSet = (k, v) => kv('readwrite', (s) => s.put(v, k));
+
+/** Read access is granted on pick; WRITE needs its own explicit grant. */
+async function ensureWritable(handle) {
+  const opts = { mode: 'readwrite' };
+  if ((await handle.queryPermission(opts)) === 'granted') return true;
+  return (await handle.requestPermission(opts)) === 'granted';
+}
+
+const fs = {
+  async pickFolder() {
+    const dir = await window.showDirectoryPicker({ mode: 'readwrite' });
+    await ensureWritable(dir);
+    await kvSet('folder', dir);
+    return dir;
+  },
+  async restoreFolder() {
+    const dir = await kvGet('folder');
+    if (!dir) return null;
+    return (await dir.queryPermission({ mode: 'readwrite' })) === 'granted' ? dir : { needsGrant: dir };
+  },
+  async listMarkdown(dir) {
+    const out = [];
+    for await (const [name, handle] of dir.entries()) {
+      if (handle.kind === 'file' && name.toLowerCase().endsWith('.md')) out.push({ name, handle });
+    }
+    return out.sort((a, b) => a.name.localeCompare(b.name));
+  },
+  async read(handle) { return (await handle.getFile()).text(); },
+  async write(handle, text) {
+    const w = await handle.createWritable();
+    await w.write(text);
+    await w.close();
+  },
+};
+async function backup(name, text) {
+  const ring = (await kvGet('backup:' + name)) || [];
+  ring.unshift({ at: new Date().toISOString(), text });
+  await kvSet('backup:' + name, ring.slice(0, 10));
+}
+
+/* ===========================================================================
+   state
+   =========================================================================== */
+const S = {
+  dir: null, files: [], file: null, doc: null, originalText: '',
+  readOnly: false, view: 'map', mode: 'normal', present: false,
+  selected: null, dirty: false, onlyMaps: true,
+};
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const today = () => new Date().toISOString().slice(0, 10);
+
+/* ===========================================================================
+   ui chrome
+   =========================================================================== */
+function banner(kind, html, sticky) {
+  const d = document.createElement('div');
+  d.className = 'banner ' + kind;
+  d.innerHTML = html + '<button class="x" title="Dismiss">×</button>';
+  d.querySelector('.x').onclick = () => d.remove();
+  $('banners').appendChild(d);
+  if (!sticky) setTimeout(() => d.remove(), 6000);
+  return d;
+}
+const clearBanners = () => ($('banners').innerHTML = '');
+
+function setStatus() {
+  const el = $('status');
+  el.textContent = S.readOnly ? '· read-only' : S.dirty ? '· unsaved changes' : S.file ? '· saved' : '';
+  el.className = 'status' + (S.dirty ? ' dirty' : '');
+  $('saveBtn').disabled = !S.dirty || S.readOnly;
+}
+
+function signStats(doc) {
+  let signed = 0, total = 0;
+  for (const o of doc.objects) {
+    if (!o.table) continue;
+    const col = signOffCol(o.table);
+    for (const r of o.table.rows) { total++; if (isSigned(r, col)) signed++; }
+  }
+  return { signed, total };
+}
+function objSigned(o) {
+  if (!o.table) return { signed: 0, total: 0 };
+  const col = signOffCol(o.table);
+  let s = 0;
+  for (const r of o.table.rows) if (isSigned(r, col)) s++;
+  return { signed: s, total: o.table.rows.length };
+}
+
+function renderHeadline() {
+  if (!S.doc) { $('headline').textContent = ''; return; }
+  const { signed, total } = signStats(S.doc);
+  $('headline').innerHTML = `<b>${signed}</b> of ${total} rows signed off`;
+}
+
+function objCounts(obj) {
+  const c = { core: 0, meta: 0, nested: 0, action: 0 };
+  if (obj.table) for (const r of obj.table.rows) {
+    if (r.kind === 'attribute') c[r.slot]++;
+    else if (r.kind === 'relationship') c.nested++;
+    else if (r.kind === 'action') c.action++;
+  }
+  return c;
+}
+
+function renderRail() {
+  const rail = $('rail');
+  rail.innerHTML = '';
+  if (!S.files.length) return;
+
+  const fh = document.createElement('div');
+  fh.className = 'rail-h';
+  fh.innerHTML = `<span>Files</span><span class="spacer"></span>`;
+  const tog = document.createElement('button');
+  tog.className = 'btn sm';
+  tog.textContent = S.onlyMaps ? 'maps' : 'all';
+  tog.title = 'Show only files that parse as object maps';
+  tog.onclick = () => { S.onlyMaps = !S.onlyMaps; renderRail(); };
+  fh.appendChild(tog);
+  const nu = document.createElement('button');
+  nu.className = 'btn sm'; nu.textContent = '+';
+  nu.title = 'Start a new object map in this folder';
+  nu.onclick = newMap;
+  fh.appendChild(nu);
+  rail.appendChild(fh);
+
+  for (const f of S.files) {
+    if (S.onlyMaps && f.isMap === false) continue;
+    const b = document.createElement('button');
+    b.className = 'rail-item' + (f.isMap === false ? ' muted' : '');
+    b.setAttribute('aria-current', S.file && S.file.name === f.name ? 'true' : 'false');
+    b.innerHTML = `<span class="nm">${esc(f.name.replace(/\.md$/, ''))}</span>` +
+      (f.objectCount ? `<span class="ct">${f.objectCount}</span>` : '');
+    b.onclick = () => openFile(f);
+    rail.appendChild(b);
+  }
+
+  if (!S.doc) return;
+  const oh = document.createElement('div');
+  oh.className = 'rail-h';
+  oh.innerHTML = `<span>Objects (${S.doc.objects.length})</span><span class="spacer"></span>`;
+  if (!S.readOnly) {
+    const add = document.createElement('button');
+    add.className = 'btn sm'; add.textContent = '+';
+    add.title = 'Add an object';
+    add.onclick = doAddObject;
+    oh.appendChild(add);
+  }
+  rail.appendChild(oh);
+
+  for (const o of S.doc.objects) {
+    const st = objSigned(o);
+    const b = document.createElement('button');
+    b.className = 'rail-item';
+    b.setAttribute('aria-current', S.selected === o.id ? 'true' : 'false');
+    b.innerHTML = `<span class="nm">${esc(o.name)}</span><span class="ct">${st.signed}/${st.total}</span>`;
+    b.onclick = () => goTo(o.id);
+    rail.appendChild(b);
+  }
+}
+
+function goTo(id) {
+  S.selected = id;
+  S.view = 'card';
+  syncSegs(); renderStage(); renderRail();
+  $('stage').scrollTop = 0;
+}
+
+/* ===========================================================================
+   stage
+   =========================================================================== */
+function renderStage() {
+  const stage = $('stage');
+  if (!S.doc) {
+    stage.innerHTML = `<div class="welcome">
+      <h1>ORCA</h1>
+      <p>An OOUX object map you can edit — objects, attributes, actions and relationships,
+      each row signed off once design and engineering agree on it.</p>
+      <p style="margin-top:22px"><button class="btn primary" id="openBtn2">Open a folder</button></p>
+      <p style="font-size:13px;color:var(--muted)">Pick any folder — an existing map opens straight away,
+      and if there is nothing there yet you can start one with <b>+</b> next to Files.</p>
+      <p style="font-size:12px;color:var(--faint);margin-top:26px">
+        Markdown stays the source of truth. Nothing you did not edit is ever rewritten.</p>
+    </div>`;
+    const b = $('openBtn2'); if (b) b.onclick = openFolder;
+    return;
+  }
+  if (S.view === 'map') return renderMap(stage);
+  if (S.view === 'source') return renderSource(stage);
+  renderCard(stage);
+}
+
+function renderMap(stage) {
+  if (!S.doc.objects.length) {
+    stage.innerHTML = `<p class="empty-note">No objects in this file.</p>`;
+    return;
+  }
+  let html = '<div class="grid">';
+  for (const o of S.doc.objects) {
+    const c = objCounts(o), st = objSigned(o);
+    const pct = st.total ? Math.round((st.signed / st.total) * 100) : 0;
+    html += `<button class="mini" data-id="${esc(o.id)}" data-signed="${st.signed}">
+      <h4>${esc(o.name)}</h4>
+      <p class="def">${esc(o.definition ? o.definition.text.replace(/\*\*/g, '') : '')}</p>
+      <div class="sigbar"><i style="width:${pct}%"></i></div>
+      <div class="counts"><span>${c.core}c</span><span>${c.meta}m</span><span>${c.nested}n</span>
+        <span>${c.action}a</span><span style="margin-left:auto">${st.signed}/${st.total}</span></div>
+    </button>`;
+  }
+  html += '</div>';
+  stage.innerHTML = html;
+  stage.querySelectorAll('.mini').forEach((el) => (el.onclick = () => goTo(el.dataset.id)));
+}
+
+function renderSource(stage) {
+  const text = serializeDocument(S.doc);
+  const obj = S.doc.objects.find((o) => o.id === S.selected);
+  const marker = obj ? '#'.repeat(obj.level) + ' ' + obj.name : null;
+  const lines = text.split('\n');
+  let inObj = false;
+  const out = lines.map((l, i) => {
+    if (marker) {
+      if (l.trim() === marker) inObj = true;
+      else if (/^#{1,6}\s/.test(l)) inObj = false;
+    }
+    const n = `<span class="ln">${i + 1}</span>`;
+    const body = esc(l) || ' ';
+    return n + (inObj ? `<mark>${body}</mark>` : body);
+  });
+  stage.innerHTML = `<div class="sec-h">Markdown source${obj ? ' — highlighting ' + esc(obj.name) : ''}
+    <span class="spacer"></span><span style="text-transform:none;letter-spacing:0">${text.length} bytes</span></div>
+    <pre class="source">${out.join('\n')}</pre>`;
+}
+
+const SECTIONS = [
+  { key: 'core', type: 'core', label: 'Core Content', match: (r) => r.kind === 'attribute' && r.slot === 'core' },
+  { key: 'meta', type: 'meta', label: 'Metadata', match: (r) => r.kind === 'attribute' && r.slot === 'meta' },
+  { key: 'action', type: 'action · primary', label: 'Actions', match: (r) => r.kind === 'action' },
+  { key: 'nested', type: 'nested', label: 'Nested Objects', match: (r) => r.kind === 'relationship' },
+  { key: 'other', type: '', label: 'Annotations', match: (r) => r.kind === 'annotation' || r.kind === 'unknown' },
+];
+
+function cardOptions(raw) {
+  const known = CARDINALITIES.some((c) => c.value === raw);
+  const base = CARDINALITIES.map((c) =>
+    `<option value="${esc(c.value)}" ${c.value === raw ? 'selected' : ''}>${esc(c.label)}</option>`).join('');
+  const parsed = parseCardinality(raw);
+  if (known) return base;
+  // A value that does not fit the options is preserved and shown as-is.
+  if (['singular', '0-many', 'range'].includes(parsed.kind)) {
+    return CARDINALITIES.map((c) =>
+      `<option value="${esc(c.value)}" ${c.value === parsed.kind ? 'selected' : ''}>${esc(c.label)}</option>`).join('');
+  }
+  return base + `<option value="${esc(raw)}" selected>${esc(raw.replace(/\*\*/g, '')) || 'not asked'} (kept)</option>`;
+}
+
+function renderCard(stage) {
+  const obj = S.doc.objects.find((o) => o.id === S.selected) || S.doc.objects[0];
+  if (!obj) {
+    stage.innerHTML = `<p class="empty-note">No objects in this file.</p>` +
+      (S.readOnly ? '' : `<p><button class="btn" id="addFirst">+ Add an object</button></p>`);
+    const a = $('addFirst'); if (a) a.onclick = doAddObject;
+    return;
+  }
+  S.selected = obj.id;
+  const idx = S.doc.objects.indexOf(obj);
+  const prev = S.doc.objects[idx - 1], next = S.doc.objects[idx + 1];
+  const ro = S.readOnly;
+  const col = obj.table ? signOffCol(obj.table) : -1;
+  const C = obj.table ? obj.table.cols : { type: 0, name: 1, cardinality: 2, note: 4 };
+  const rows = obj.table ? obj.table.rows : [];
+
+  let html = `<div class="cardnav">
+    <button class="btn" id="prevObj" ${prev ? '' : 'disabled'}>← ${prev ? esc(prev.name) : ''}</button>
+    <span class="mid">${idx + 1} of ${S.doc.objects.length} &nbsp;·&nbsp; <span class="kbd">←</span> <span class="kbd">→</span> to move</span>
+    <button class="btn" id="nextObj" ${next ? '' : 'disabled'}>${next ? esc(next.name) : ''} →</button>
+  </div>
+  <article class="card">
+    <div class="kicker">Object name</div>
+    <input class="namein" id="nameIn" value="${esc(obj.name)}" ${ro ? 'readonly' : ''}>
+    <hr>
+    <div class="sec-h">Object definition</div>
+    <textarea class="ta" id="defEdit" rows="2" ${ro ? 'readonly' : ''}
+      placeholder="Nobody has written a definition yet.">${esc(obj.definition ? obj.definition.text : '')}</textarea>
+    <hr>`;
+
+  for (const sec of SECTIONS) {
+    const list = rows.map((r, i) => ({ r, i })).filter(({ r }) => sec.match(r));
+    if (!list.length && sec.key === 'other') continue;
+    html += `<div class="sec-h">${sec.label}<span class="spacer"></span>` +
+      (ro ? '' : `<button class="btn sm" data-add="${sec.key}">+ row</button>`) + `</div>`;
+    if (!list.length) {
+      html += `<p class="empty-note">Nothing recorded yet.</p>`;
+    } else {
+      html += `<table class="rows"><thead><tr>
+        <th style="width:30%">Name</th><th style="width:19%">Cardinality</th>
+        <th>Note</th><th style="width:96px">Sign-off</th><th style="width:26px"></th></tr></thead><tbody>`;
+      for (const { r, i } of list) {
+        const signed = isSigned(r, col);
+        const lock = signed || ro ? 'disabled' : '';
+        html += `<tr class="${signed ? 'signed' : ''} ${r.dirty ? 'rowdirty' : ''}">
+          <td>
+            <input class="cell" data-row="${i}" data-col="${C.name}" value="${esc(r.cells[C.name])}" ${lock}>
+            ${r.kind === 'relationship' ? targetChips(r) : ''}
+          </td>
+          <td>
+            <select class="cell small" data-row="${i}" data-card="1" ${lock}>${cardOptions(r.cells[C.cardinality])}</select>
+            <input class="cell small qual" data-row="${i}" data-qual="1" placeholder="qualifier"
+              value="${esc(r.cardinality.qualifier || '')}" ${lock}>
+          </td>
+          <td><input class="cell small" data-row="${i}" data-col="${C.note}" value="${esc(r.cells[C.note])}" ${lock}></td>
+          <td><button class="lockbtn ${signed ? 'on' : ''}" data-lock="${i}" ${ro ? 'disabled' : ''}
+            title="${signed ? 'Signed ' + esc(r.cells[col] || '') + ' — click to unlock' : 'Sign off on this row'}">
+            ${signed ? 'Signed' : 'Sign off'}</button></td>
+          <td>${ro || signed ? '' : `<button class="rowbtn" data-del="${i}" title="Delete row">×</button>`}</td>
+        </tr>`;
+      }
+      html += '</tbody></table>';
+    }
+  }
+
+  const back = backlinks(S.doc, obj.id);
+  html += `<hr><div class="sec-h">Referenced by</div>`;
+  if (!back.length) {
+    html += `<p class="empty-note">No other object in this file points at ${esc(obj.name)}.</p>`;
+  } else {
+    for (const b of back) {
+      html += `<div class="backlink">
+        <button data-goto="${esc(b.from.id)}">${esc(b.from.name)}</button>
+        <span class="c">${esc(b.row.cardinality.raw.replace(/\*\*/g, '') || 'not asked')}</span>
+        <span class="c">${esc(b.row.cells[b.row.cols ? b.row.cols.note : 4] || '')}</span></div>`;
+    }
+  }
+
+  const notesVal = (obj.notes.find((n) => n.label.toLowerCase() === 'notes') || {}).body || '';
+  html += `<hr><div class="sec-h">Notes</div>
+    <textarea class="ta" id="notesEdit" rows="3" ${ro ? 'readonly' : ''}
+      placeholder="Anything worth remembering about this object.">${esc(notesVal)}</textarea>`;
+
+  const others = obj.notes.filter((n) => n.label.toLowerCase() !== 'notes');
+  if (others.length) {
+    html += `<div class="notes" style="margin-top:12px">`;
+    for (const n of others) html += `<p><span class="lbl">${esc(n.label)}</span>${esc(n.body)}</p>`;
+    html += `</div>`;
+  }
+
+  if (!ro) {
+    html += `<hr><button class="btn danger sm" id="delObj">Delete this object</button>`;
+  }
+  html += '</article>';
+  stage.innerHTML = html;
+  wireCard(obj, col, prev, next, C);
+}
+
+function targetChips(row) {
+  if (!row.targets.length) return '';
+  return '<div class="chips">' + row.targets.map((t) => {
+    const id = slug(t.name);
+    const exists = S.doc.objects.some((o) => o.id === id);
+    return exists
+      ? `<button class="chip" data-goto="${esc(id)}">${esc(t.name)} →</button>`
+      : `<span class="chip ghost" title="Not an object in this file">${esc(t.name)}</span>`;
+  }).join('') + '</div>';
+}
+
+function wireCard(obj, col, prev, next, C) {
+  const stage = $('stage');
+  const P = $('prevObj'), N = $('nextObj');
+  if (P && prev) P.onclick = () => goTo(prev.id);
+  if (N && next) N.onclick = () => goTo(next.id);
+
+  stage.querySelectorAll('[data-goto]').forEach((el) => (el.onclick = () => goTo(el.dataset.goto)));
+  if (S.readOnly) return;
+
+  const nameIn = $('nameIn');
+  nameIn.onchange = () => {
+    const v = nameIn.value.trim();
+    if (!v || v === obj.name) { nameIn.value = obj.name; return; }
+    const r = renameObject(S.doc, obj.id, v);
+    S.selected = slug(v);
+    markDirty();
+    if (r.rewritten) banner('ok', `Renamed. Rewrote <b>${r.rewritten}</b> reference${r.rewritten === 1 ? '' : 's'} to <code>[[#${esc(r.oldName)}]]</code> in this file.`);
+    renderStage(); renderRail();
+  };
+
+  $('defEdit').onchange = (e) => {
+    if (!obj.definition) {
+      banner('warn', 'This object has no <code>**Definition:**</code> line to edit. Add one in Obsidian and reopen.');
+      return;
+    }
+    if (obj.definition.text === e.target.value.trim()) return;
+    obj.definition.text = e.target.value.trim();
+    obj.definition.dirty = true;
+    markDirty();
+  };
+
+  $('notesEdit').onchange = (e) => {
+    setNote(obj, 'Notes', e.target.value.trim());
+    markDirty();
+  };
+
+  stage.querySelectorAll('.cell[data-col]').forEach((el) => {
+    el.onchange = () => {
+      const row = obj.table.rows[+el.dataset.row];
+      const c = +el.dataset.col;
+      if (row.cells[c] === el.value) return;
+      row.cells[c] = el.value;
+      row.dirty = true;
+      markDirty();                       // no re-render: keeps focus and Tab order
+    };
+  });
+
+  stage.querySelectorAll('select[data-card]').forEach((el) => {
+    el.onchange = () => {
+      const row = obj.table.rows[+el.dataset.row];
+      const qual = stage.querySelector(`input[data-qual][data-row="${el.dataset.row}"]`);
+      row.cells[C.cardinality] = composeCardinality(el.value, qual ? qual.value : '', false);
+      row.cardinality = parseCardinality(row.cells[C.cardinality]);
+      row.dirty = true;
+      markDirty(); renderStage();
+    };
+  });
+  stage.querySelectorAll('input[data-qual]').forEach((el) => {
+    el.onchange = () => {
+      const row = obj.table.rows[+el.dataset.row];
+      const sel = stage.querySelector(`select[data-card][data-row="${el.dataset.row}"]`);
+      row.cells[C.cardinality] = composeCardinality(sel ? sel.value : '', el.value, false);
+      row.cardinality = parseCardinality(row.cells[C.cardinality]);
+      row.dirty = true;
+      markDirty();
+    };
+  });
+
+  stage.querySelectorAll('[data-lock]').forEach((el) => {
+    el.onclick = () => {
+      const i = +el.dataset.lock;
+      let c = signOffCol(obj.table);
+      const row = obj.table.rows[i];
+      if (c < 0) {
+        if (!confirm('This file has no Sign-off column yet.\n\nAdding one rewrites this table once. Every edit after that is a one-line change again.\n\nAdd it?')) return;
+        c = addSignOffColumn(obj.table);
+      }
+      if (isSigned(row, c)) {
+        if (!confirm('Unlock this row so it can be edited again?')) return;
+        unsignRow(row, c);
+      } else {
+        signRow(row, c, today());
+      }
+      markDirty(); renderStage();
+    };
+  });
+
+  stage.querySelectorAll('[data-del]').forEach((el) => {
+    el.onclick = () => {
+      if (!confirm('Delete this row?')) return;
+      obj.table.rows.splice(+el.dataset.del, 1);
+      markDirty(); renderStage();
+    };
+  });
+
+  stage.querySelectorAll('[data-add]').forEach((el) => {
+    el.onclick = () => {
+      const sec = SECTIONS.find((s) => s.key === el.dataset.add);
+      addRow(obj, sec.type, C);
+    };
+  });
+
+  $('delObj').onclick = () => {
+    if (!confirm(`Delete the object "${obj.name}"?\n\nThis removes it from the file when you save.`)) return;
+    const i = S.doc.objects.indexOf(obj);
+    removeObject(S.doc, obj.id);
+    const nextSel = S.doc.objects[Math.max(0, i - 1)];
+    S.selected = nextSel ? nextSel.id : null;
+    markDirty(); renderStage(); renderRail();
+  };
+}
+
+function addRow(obj, type, C) {
+  if (!obj.table) { banner('warn', 'This object has no anatomy table. Add one in Obsidian and reopen.'); return; }
+  const cols = C || obj.table.cols;
+  const cells = new Array(obj.table.colCount).fill('');
+  cells[cols.type] = type;
+  const row = {
+    src: '\n', dirty: true, cells,
+    kind: type === 'nested' ? 'relationship' : type.startsWith('action') ? 'action' : type ? 'attribute' : 'annotation',
+    slot: type === 'core' ? 'core' : type === 'meta' ? 'meta' : null,
+    priority: type.startsWith('action') ? 'primary' : null,
+    name: '', targets: [], label: null,
+    cardinality: { raw: '', kind: 'unknown', qualifier: null, uncertain: false },
+    evidence: { state: 'unasked', grade: null, raw: '' },
+    note: '', who: '', refs: { questions: [], dates: [], links: [] },
+  };
+  row.cols = cols;
+  let at = obj.table.rows.length;
+  for (let i = obj.table.rows.length - 1; i >= 0; i--) {
+    if (obj.table.rows[i].cells[cols.type] === type) { at = i + 1; break; }
+  }
+  obj.table.rows.splice(at, 0, row);
+  markDirty(); renderStage();
+  const inp = $('stage').querySelector(`.cell[data-row="${at}"][data-col="${cols.name}"]`);
+  if (inp) inp.focus();
+}
+
+function doAddObject() {
+  const name = prompt('New object name');
+  if (!name || !name.trim()) return;
+  if (S.doc.objects.some((o) => o.id === slug(name.trim()))) {
+    banner('err', 'An object with that name already exists in this file.');
+    return;
+  }
+  const block = addObject(S.doc, name.trim());
+  S.selected = block.id;
+  markDirty(); goTo(block.id);
+}
+
+function markDirty() { S.dirty = true; setStatus(); renderHeadline(); renderRail(); }
+
+/* ===========================================================================
+   open / save
+   =========================================================================== */
+async function openFolder() {
+  try {
+    S.dir = await fs.pickFolder();
+    await loadFolder();
+  } catch (e) {
+    if (e.name !== 'AbortError') banner('err', 'Could not open folder: ' + esc(e.message), true);
+  }
+}
+
+async function loadFolder() {
+  clearBanners();
+  S.files = await fs.listMarkdown(S.dir);
+  $('fileName').textContent = S.dir.name;
+  // Probe each file once so the rail can hide the ones that are not object maps.
+  for (const f of S.files) {
+    try {
+      const t = await fs.read(f.handle);
+      const d = parseDocument(t);
+      f.objectCount = d.objects.length;
+      f.isMap = d.objects.length > 0;
+    } catch { f.isMap = false; }
+  }
+  renderRail();
+  const maps = S.files.filter((f) => f.isMap);
+  if (!maps.length) {
+    const b = banner('warn', 'No object maps in this folder yet. <b>Start one?</b> ', true);
+    const go = document.createElement('button');
+    go.className = 'btn sm'; go.textContent = 'New map';
+    go.onclick = () => { b.remove(); newMap(); };
+    b.insertBefore(go, b.querySelector('.x'));
+  } else if (maps.length === 1 && !S.file) openFile(maps[0]);
+}
+
+/** Create a new object-map file in the open folder and open it. */
+async function newMap() {
+  if (!S.dir) { banner('warn', 'Open a folder first.'); return; }
+  const title = prompt('Name for the new object map', 'Object Map');
+  if (!title || !title.trim()) return;
+  const clean = title.trim().replace(/\.md$/i, '');
+  const filename = clean + '.md';
+  try {
+    if (!(await ensureWritable(S.dir))) {
+      banner('err', '<b>Write permission denied.</b> Chrome needs a grant to create files. Try again and choose <b>Edit files</b>.', true);
+      return;
+    }
+    if (S.files.some((f) => f.name.toLowerCase() === filename.toLowerCase())) {
+      banner('err', `<code>${esc(filename)}</code> already exists in this folder.`, true);
+      return;
+    }
+    const handle = await S.dir.getFileHandle(filename, { create: true });
+    await fs.write(handle, blankMap(clean));
+    await loadFolder();
+    const f = S.files.find((x) => x.name === filename);
+    if (f) { await openFile(f); goTo(S.doc.objects[0].id); }
+    banner('ok', `Created <b>${esc(filename)}</b>. Rename the starter object and start adding rows.`);
+  } catch (e) {
+    banner('err', `<b>Could not create the file.</b> ${esc(e.name)}: ${esc(e.message)}`, true);
+  }
+}
+
+async function openFile(f) {
+  if (S.dirty && !confirm('Unsaved changes will be lost. Continue?')) return;
+  clearBanners();
+  const text = await fs.read(f.handle);
+  const r = verifyRoundTrip(text);
+  S.file = f; S.originalText = text; S.doc = r.doc || parseDocument(text);
+  S.dirty = false; S.readOnly = !r.ok;
+  S.selected = S.doc.objects.length ? S.doc.objects[0].id : null;
+  $('fileName').textContent = f.name;
+
+  if (!r.ok) {
+    banner('err', `<b>Read-only.</b> This file did not reproduce byte-for-byte on a test round-trip,
+      so it will not be written to. First difference at line <code>${r.line}</code>.<br>
+      expected: <code>${esc(String(r.expected).slice(0, 160))}</code><br>
+      produced: <code>${esc(String(r.actual).slice(0, 160))}</code>`, true);
+  } else if (!S.doc.objects.length) {
+    banner('warn', `Parsed, but no objects found — this file does not use the per-object format.`, true);
+  }
+  syncSegs(); renderRail(); renderStage(); renderHeadline(); setStatus();
+}
+
+async function save() {
+  if (!S.file || S.readOnly || !S.dirty) return;
+  try {
+    if (!(await ensureWritable(S.dir))) {
+      banner('err', '<b>Write permission denied.</b> Chrome needs a separate grant to save. Click Save again and choose <b>Edit files</b>.', true);
+      return;
+    }
+    const onDisk = await fs.read(S.file.handle);
+    if (onDisk !== S.originalText) {
+      if (!confirm('This file changed on disk since you opened it (Obsidian?).\n\nOK = overwrite with your version.\nCancel = discard yours and reload from disk.')) {
+        S.dirty = false; await openFile(S.file); return;
+      }
+    }
+    const text = serializeDocument(S.doc);
+    await backup(S.file.name, S.originalText);
+    await fs.write(S.file.handle, text);
+
+    const sel = S.selected;
+    S.originalText = text;
+    S.doc = parseDocument(text);
+    S.selected = S.doc.objects.some((o) => o.id === sel) ? sel : (S.doc.objects[0] || {}).id;
+    S.dirty = false;
+    setStatus(); renderStage(); renderRail(); renderHeadline();
+    banner('ok', `Saved <b>${esc(S.file.name)}</b>.`);
+  } catch (e) {
+    banner('err', `<b>Save failed.</b> ${esc(e.name)}: ${esc(e.message)}`, true);
+  }
+}
+
+/* ===========================================================================
+   chrome wiring
+   =========================================================================== */
+function syncSegs() {
+  document.querySelectorAll('#viewSeg button').forEach((b) =>
+    b.setAttribute('aria-pressed', b.dataset.view === S.view ? 'true' : 'false'));
+  document.querySelectorAll('#modeSeg button').forEach((b) =>
+    b.setAttribute('aria-pressed', b.dataset.mode === S.mode ? 'true' : 'false'));
+  document.body.dataset.mode = S.mode;
+  document.body.dataset.present = S.present ? 'true' : 'false';
+}
+
+$('openBtn').onclick = openFolder;
+$('saveBtn').onclick = save;
+$('presentBtn').onclick = () => { S.present = true; S.view = 'card'; syncSegs(); renderStage(); };
+$('exitPresent').onclick = () => { S.present = false; syncSegs(); renderStage(); };
+document.querySelectorAll('#viewSeg button').forEach((b) =>
+  (b.onclick = () => { S.view = b.dataset.view; syncSegs(); renderStage(); }));
+document.querySelectorAll('#modeSeg button').forEach((b) =>
+  (b.onclick = () => { S.mode = b.dataset.mode; syncSegs(); }));
+
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); save(); return; }
+  if (e.key === 'Escape' && S.present) { S.present = false; syncSegs(); renderStage(); return; }
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test((e.target.tagName || '')) || e.target.isContentEditable;
+  if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (!S.doc || !S.doc.objects.length) return;
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    e.preventDefault();
+    const cur = S.doc.objects.findIndex((o) => o.id === S.selected);
+    const at = cur < 0 ? 0 : cur + (e.key === 'ArrowRight' ? 1 : -1);
+    if (at >= 0 && at < S.doc.objects.length) goTo(S.doc.objects[at].id);
+  }
+});
+window.addEventListener('beforeunload', (e) => { if (S.dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+/* boot ---------------------------------------------------------------------*/
+(async function boot() {
+  syncSegs(); renderStage(); setStatus();
+  if (typeof window.showDirectoryPicker !== 'function') {
+    banner('err', `<b>This browser cannot open local folders.</b> Use Chrome, Edge, Arc or Brave.`, true);
+    $('openBtn').disabled = true; return;
+  }
+  if (location.protocol === 'file:') {
+    banner('err', `<b>Opened as a file, not over http.</b> Run <code>./serve.sh</code> and open
+      <code>http://localhost:8042</code>.`, true);
+    return;
+  }
+  try {
+    const restored = await fs.restoreFolder();
+    if (restored && restored.needsGrant) {
+      banner('warn', 'A folder is remembered from last time. Click <b>Open folder</b> to reconnect it — browsers require a click.', true);
+    } else if (restored) { S.dir = restored; await loadFolder(); }
+  } catch (e) { /* first run or stale handle */ }
+})();
+</script>
+</body>
+</html>

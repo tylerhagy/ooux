@@ -11,7 +11,8 @@ import {
   evidenceStats, deriveEdges, parseCardinality, parseEvidence, parseType, parseTargets,
   addSignOffColumn, signOffCol, isSigned, signRow, unsignRow,
   addObject, removeObject, renameObject, setNote, backlinks, composeCardinality,
-  removeColumn, parseHeader, blankMap,
+  removeColumn, parseHeader, blankMap, moveRow, moveObject,
+  renderTargets, setRowTargets, ensureTable, setNoteLabel, removeNote,
 } from './parser.js';
 
 /**
@@ -299,6 +300,208 @@ console.log('\n=== 9. STARTING FROM SCRATCH ===\n');
   ok('the signed row reads back signed', isSigned(d2.objects[0].table.rows[0], signOffCol(d2.objects[0].table)));
   ok('the relationship resolves to the second object',
     backlinks(d2, 'territory').length === 1, JSON.stringify(backlinks(d2, 'territory').length));
+}
+
+
+console.log('\n=== 10. REORDERING ===\n');
+{
+  const src = readFileSync('./fixtures/round-trip-test.md', 'utf8');
+
+  // rows
+  {
+    const doc = parseDocument(src);
+    const t = doc.objects.find((o) => o.name === 'Book').table;
+    const names = t.rows.map((r) => r.cells[1]);
+    ok('move down swaps with the next row', moveRow(t, 0, 1) &&
+      t.rows[0].cells[1] === names[1] && t.rows[1].cells[1] === names[0]);
+    ok('move to a negative index is refused', moveRow(t, 0, -1) === false);
+    ok('move past the end is refused', moveRow(t, t.rows.length - 1, t.rows.length) === false);
+    ok('moving to the same index is refused', moveRow(t, 2, 2) === false);
+    const out = serializeDocument(doc);
+    const re = verifyRoundTrip(out);
+    ok('reordered file round-trips', re.ok, re.reason + ' line ' + re.line);
+    const a = src.split('\n'), b = out.split('\n');
+    const diffs = [];
+    for (let i = 0; i < Math.max(a.length, b.length); i++) if (a[i] !== b[i]) diffs.push(i + 1);
+    ok('a swap touches exactly two lines', diffs.length === 2, 'changed: ' + diffs.join(','));
+    ok('no row was marked dirty by moving it', t.rows.every((r) => !r.dirty));
+  }
+
+  // objects
+  {
+    const doc = parseDocument(src);
+    const before = doc.objects.map((o) => o.name);
+    ok('move object down', moveObject(doc, 'book', 1));
+    const after = doc.objects.map((o) => o.name);
+    ok('order changed as expected',
+      after[0] === before[1] && after[1] === before[0], before.join(',') + ' -> ' + after.join(','));
+    ok('move up at the top is refused', moveObject(doc, after[0] === 'Book' ? 'book' : slugOf(after[0]), -1) === false ||
+      moveObject(doc, 'x-nonexistent', -1) === false);
+    const out = serializeDocument(doc);
+    const re = verifyRoundTrip(out);
+    ok('reordered objects round-trip', re.ok, re.reason + ' line ' + re.line);
+    const d2 = parseDocument(out);
+    ok('same object count after reorder', d2.objects.length === doc.objects.length);
+    ok('every object still has its rows', d2.objects.every((o, i) =>
+      (o.table ? o.table.rows.length : 0) === (doc.objects[i].table ? doc.objects[i].table.rows.length : 0)));
+    ok('no content lost', out.length === src.length, `${src.length} -> ${out.length}`);
+  }
+}
+function slugOf(n) { return String(n).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
+
+
+console.log('\n=== 11. SEPARATORS SURVIVE ADD + REORDER ===\n');
+{
+  // Regression: the new object's separator used to be its own block, so moving
+  // the object left the rule behind and headings lost their dividers.
+  const src = readFileSync('./fixtures/round-trip-test.md', 'utf8');
+  const rules = (t) => (t.match(/^---$/gm) || []).length;
+  const doc = parseDocument(src);
+  const before = rules(src);
+  addObject(doc, 'Reservation');
+  moveObject(doc, 'reservation', -1);
+  moveObject(doc, 'reservation', -1);
+  const out = serializeDocument(doc);
+  ok('file still round-trips', verifyRoundTrip(out).ok);
+  ok('one rule was added and none lost', rules(out) === before + 1, `${before} -> ${rules(out)}`);
+  const d2 = parseDocument(out);
+  ok('all objects survived', d2.objects.length === doc.objects.length);
+  ok('the moved object landed two positions up from the end',
+    d2.objects[2].name === 'Reservation', d2.objects.map((o) => o.name).join(','));
+  const heads = out.split('\n').filter((l) => /^##\s/.test(l));
+  ok('every heading is still present', heads.length === d2.objects.length + 1, heads.length + ' headings');
+}
+
+
+console.log('\n=== 12. TARGET NAMES CONTAINING A SLASH ===\n');
+{
+  const one = parseTargets('[[#Note / Interaction / Activity]]');
+  ok('a slashed wikilink is ONE target', one.targets.length === 1,
+    JSON.stringify(one.targets.map((t) => t.name)));
+  ok('its name is intact', one.targets[0].name === 'Note / Interaction / Activity', one.targets[0].name);
+  const bold = parseTargets('**Note / Interaction / Activity**');
+  ok('a slashed bold name is ONE target', bold.targets.length === 1, JSON.stringify(bold.targets.map((t) => t.name)));
+  const many = parseTargets('**Copy** / **Series** / **Edition**');
+  ok('genuine multi-targets still split', many.targets.length === 3, JSON.stringify(many.targets.map((t) => t.name)));
+  const mixed = parseTargets('[[#Note / Interaction / Activity]] / **Meter**');
+  ok('mixed splits at the top level only', mixed.targets.length === 2 &&
+    mixed.targets[0].name === 'Note / Interaction / Activity' && mixed.targets[1].name === 'Meter',
+    JSON.stringify(mixed.targets.map((t) => t.name)));
+  const labelled = parseTargets('**Meter** — allocation splits, effective-dated');
+  ok('the label split still works', labelled.targets.length === 1 && labelled.label === 'allocation splits, effective-dated');
+}
+
+
+console.log('\n=== 13. TARGETS WRITTEN FROM A PICKER, NOT TYPED SYNTAX ===\n');
+{
+  ok('internal renders as a wikilink', renderTargets([{ name: 'Contact', scope: 'internal' }], null) === '[[#Contact]]');
+  ok('external renders as bold', renderTargets([{ name: 'Meter', scope: 'external' }], null) === '**Meter**');
+  ok('scope is preserved per target',
+    renderTargets([{ name: 'Contact', scope: 'internal' }, { name: 'Meter', scope: 'external' }], null) === '[[#Contact]] / **Meter**');
+  ok('a label round-trips through the writer',
+    renderTargets([{ name: 'Meter', scope: 'external' }], 'allocation splits') === '**Meter** — allocation splits');
+  ok('a slashed name survives being written and reparsed', (() => {
+    const t = renderTargets([{ name: 'Note / Interaction / Activity', scope: 'internal' }], null);
+    return parseTargets(t).targets.length === 1;
+  })());
+
+  const src = readFileSync('./fixtures/round-trip-test.md', 'utf8');
+  const doc = parseDocument(src);
+  const obj = doc.objects.find((o) => o.name === 'Book');
+  const rel = obj.table.rows.find((r) => r.kind === 'relationship');
+  const before = rel.targets.length;
+  setRowTargets(rel, [...rel.targets, { name: 'Shelf', scope: 'external' }], rel.label);
+  ok('adding a target grows the list', rel.targets.length === before + 1);
+  ok('the row is marked dirty', rel.dirty === true);
+  const out = serializeDocument(doc);
+  ok('file still round-trips after a target edit', verifyRoundTrip(out).ok);
+  const a = src.split('\n'), b = out.split('\n');
+  let diffs = 0;
+  for (let i = 0; i < Math.max(a.length, b.length); i++) if (a[i] !== b[i]) diffs++;
+  ok('a target edit is a one-line diff', diffs === 1, diffs + ' lines changed');
+
+  setRowTargets(rel, rel.targets.filter((t) => t.name !== 'Shelf'), rel.label);
+  ok('removing it restores the original line', serializeDocument(doc) === src);
+}
+
+
+console.log('\n=== 14. A DEFINITION-ONLY OBJECT CAN GAIN A TABLE ===\n');
+{
+  const src = readFileSync('./fixtures/round-trip-test.md', 'utf8');
+  const doc = parseDocument(src);
+  const bare = doc.objects.find((o) => o.name === 'Edition');
+  ok('Edition starts with no table', !bare.table);
+  const model = doc.objects.find((o) => o.table);
+  const t = ensureTable(bare, model.table.headerCells);
+  ok('it has one now', !!bare.table && t === bare.table);
+  ok('columns match the rest of the file',
+    t.headerCells.join('|') === model.table.headerCells.join('|'), t.headerCells.join('|'));
+  const cells = new Array(t.colCount).fill('');
+  cells[t.cols.type] = 'core';
+  cells[t.cols.name] = 'Format';
+  t.rows.push({ src: '\n', dirty: true, cells, cols: t.cols, kind: 'attribute',
+    cardinality: parseCardinality(''), evidence: parseEvidence(''), targets: [], refs: {} });
+  const out = serializeDocument(doc);
+  const re = verifyRoundTrip(out);
+  ok('the file round-trips with the new table', re.ok, re.reason + ' line ' + re.line);
+  const d2 = parseDocument(out);
+  const b2 = d2.objects.find((o) => o.name === 'Edition');
+  ok('the table is recognised on reparse', !!b2.table);
+  ok('the row survives', b2.table.rows.length === 1 && b2.table.rows[0].name === 'Format');
+  ok('the definition is still above it', /## Edition\n\n\*\*Definition:\*\*/.test(out));
+  ok('object count unchanged', d2.objects.length === doc.objects.length);
+}
+
+
+console.log('\n=== 15. NOTES ARE FIRST CLASS: ADD, RENAME, DELETE ===\n');
+{
+  const src = readFileSync('./fixtures/round-trip-test.md', 'utf8');
+
+  // rename a label
+  {
+    const doc = parseDocument(src);
+    const obj = doc.objects.find((o) => o.name === 'Book');
+    ok('the fixture has an Open note', obj.notes.some((n) => n.label === 'Open'));
+    ok('rename reports success', setNoteLabel(obj, 'Open', 'Question') === true);
+    const out = serializeDocument(doc);
+    ok('the new label is written', out.includes('*Question:*'));
+    ok('the old label is gone', !out.includes('*Open:*'));
+    ok('the body came with it', out.includes('*Question:* who performs each action'));
+    ok('file round-trips after a rename', verifyRoundTrip(out).ok);
+    ok('renaming to an existing label is refused by the caller, not here',
+      setNoteLabel(obj, 'Question', '') === false);
+  }
+
+  // delete
+  {
+    const doc = parseDocument(src);
+    const obj = doc.objects.find((o) => o.name === 'Book');
+    const before = obj.notes.length;
+    ok('delete reports success', removeNote(obj, 'Serves') === true);
+    ok('one fewer note', obj.notes.length === before - 1);
+    const out = serializeDocument(doc);
+    const count = (t) => (t.match(/^\*Serves:\*/gm) || []).length;
+    ok(`only this object's Serves line went (${count(src)} -> ${count(out)})`,
+      count(out) === count(src) - 1);
+    ok('the sibling note survives', out.includes('*Open:*'));
+    ok('file round-trips after a delete', verifyRoundTrip(out).ok);
+    ok('deleting something absent is a no-op', removeNote(obj, 'Nope') === false);
+  }
+
+  // add, then reparse
+  {
+    const doc = parseDocument(src);
+    const obj = doc.objects.find((o) => o.name === 'Edition');
+    ok('Edition starts with no notes', obj.notes.length === 0);
+    setNote(obj, 'Today', 'Handled by hand in a spreadsheet.');
+    const out = serializeDocument(doc);
+    ok('the note is written', out.includes('*Today:* Handled by hand in a spreadsheet.'));
+    ok('file round-trips after an add', verifyRoundTrip(out).ok);
+    const d2 = parseDocument(out);
+    const o2 = d2.objects.find((o) => o.name === 'Edition');
+    ok('it reads back with label and body', o2.notes.length === 1 &&
+      o2.notes[0].label === 'Today' && o2.notes[0].body === 'Handled by hand in a spreadsheet.');
+  }
 }
 
 console.log(`\n${fail === 0 ? 'ALL PASS' : 'FAILURES'} — ${pass} passed, ${fail} failed\n`);

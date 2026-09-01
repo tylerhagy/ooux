@@ -102,10 +102,11 @@ function isSeparatorLine(line) {
 const COL_ALIASES = {
   type: 'type', name: 'name', cardinality: 'cardinality', note: 'note',
   evidence: 'evidence', 'sign-off': 'signoff', signoff: 'signoff', who: 'who', role: 'who',
+  example: 'example', 'example value': 'example', eg: 'example', sample: 'example',
 };
 export function parseHeader(cells) {
   if (!cells || cells.length < 4) return null;
-  const cols = { type: -1, name: -1, cardinality: -1, note: -1, evidence: -1, signoff: -1, who: -1 };
+  const cols = { type: -1, name: -1, cardinality: -1, note: -1, evidence: -1, signoff: -1, who: -1, example: -1 };
   cells.forEach((c, i) => {
     const key = COL_ALIASES[c.trim().toLowerCase()];
     if (key && cols[key] === -1) cols[key] = i;
@@ -174,6 +175,25 @@ export function parseCardinality(raw) {
   return { raw: s, kind: 'other', qualifier: null, uncertain };
 }
 
+/**
+ * Split a Name cell on " / " only at the top level. An object whose own name
+ * contains a slash — "Note / Interaction / Activity" — is ONE target, so a
+ * naive split produced three bogus ones and wrong backlinks.
+ */
+function splitTopLevel(s) {
+  const out = [];
+  let cur = '', i = 0, link = 0, bold = false;
+  while (i < s.length) {
+    if (s.startsWith('[[', i)) { link++; cur += '[['; i += 2; continue; }
+    if (s.startsWith(']]', i)) { if (link) link--; cur += ']]'; i += 2; continue; }
+    if (s.startsWith('**', i)) { bold = !bold; cur += '**'; i += 2; continue; }
+    if (!link && !bold && s.startsWith(' / ', i)) { out.push(cur); cur = ''; i += 3; continue; }
+    cur += s[i]; i++;
+  }
+  out.push(cur);
+  return out;
+}
+
 export function parseTargets(nameCell) {
   const s = String(nameCell || '').trim();
   if (s === '') return { targets: [], label: null };
@@ -184,7 +204,7 @@ export function parseTargets(nameCell) {
   const dash = work.indexOf(' ' + EMDASH + ' ');
   if (dash > -1) { label = work.slice(dash + 3).trim(); work = work.slice(0, dash).trim(); }
 
-  const targets = work.split(' / ').map((part) => {
+  const targets = splitTopLevel(work).map((part) => {
     const p = part.trim();
     const internal = p.match(/^\[\[#([^\]]+)\]\]$/);
     if (internal) return { name: internal[1].trim(), scope: 'internal', raw: p };
@@ -238,6 +258,10 @@ function makeRow(line, colCount, cols) {
     evidence,
     note: at('note'),
     who: at('who'),
+    // A real value from the live system, kept verbatim. Its job is to answer the
+    // questions a label cannot — how long is an account number, is it sequential
+    // or random, does a name carry status inside it. Blank is fine and common.
+    example: at('example'),
     cols,
     refs: extractRefs(at('name') + ' ' + at('cardinality') + ' ' + at('note')),
   };
@@ -634,7 +658,11 @@ export function addObject(doc, name) {
   const level = existing ? existing.level : 2;
   const columns = existing && existing.table ? existing.table.headerCells.slice() : null;
   const usesRules = /\n---\n/.test(doc.source || '');
-  if (usesRules) doc.blocks.push({ type: 'raw', src: '---' + EOL + EOL });
+  if (usesRules) {
+    const last = doc.blocks[doc.blocks.length - 1];
+    if (last && last.type === 'object') last.segments.push({ kind: 'raw', src: '---' + EOL + EOL });
+    else doc.blocks.push({ type: 'raw', src: '---' + EOL + EOL });
+  }
   const block = createObjectBlock(name, { level, columns });
   doc.blocks.push(block);
   refreshObjects(doc);
@@ -665,21 +693,52 @@ export function renameObject(doc, id, newName) {
   obj.name = newName;
   obj.id = slug(newName);
 
-  const pattern = new RegExp('\\[\\[#' + oldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\]\\]', 'g');
+  const esc = oldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Both reference styles, because an object can be referred to either way.
+  const forms = [
+    { re: new RegExp('\\[\\[#' + esc + '\\]\\]', 'g'), to: '[[#' + newName + ']]' },
+    { re: new RegExp('\\*\\*' + esc + '\\*\\*', 'g'), to: '**' + newName + '**' },
+  ];
   let rewritten = 0;
   for (const o of doc.objects) {
     if (!o.table) continue;
     for (const row of o.table.rows) {
       let changed = false;
       row.cells = row.cells.map((c) => {
-        if (pattern.test(c)) { changed = true; return c.replace(pattern, '[[#' + newName + ']]'); }
-        return c;
+        let v = c;
+        for (const f of forms) { f.re.lastIndex = 0; if (f.re.test(v)) { f.re.lastIndex = 0; v = v.replace(f.re, f.to); changed = true; } }
+        return v;
       });
       if (changed) { row.dirty = true; rewritten++; }
     }
   }
   refreshObjects(doc);
-  return { ok: true, rewritten, oldName };
+  return { ok: true, rewritten, oldName, newName };
+}
+
+/**
+ * Write a relationship row's Name cell from a target list. This is what lets the
+ * UI offer a picker instead of asking anyone to type `[[#Name]]` by hand.
+ * Scope is preserved per target: `internal` renders as a wikilink, `external`
+ * as bold, so an off-file reference is never silently converted.
+ */
+export function renderTargets(targets, label) {
+  const body = targets.map((t) =>
+    t.scope === 'internal' ? '[[#' + t.name + ']]'
+    : t.scope === 'external' ? '**' + t.name + '**'
+    : t.name).join(' / ');
+  return body + (label && label.trim() ? ' ' + EMDASH + ' ' + label.trim() : '');
+}
+
+export function setRowTargets(row, targets, label) {
+  const col = row.cols ? row.cols.name : 1;
+  row.cells[col] = renderTargets(targets, label);
+  row.dirty = true;
+  const parsed = parseTargets(row.cells[col]);
+  row.targets = parsed.targets;
+  row.label = parsed.label;
+  row.name = row.cells[col];
+  return row;
 }
 
 /** Set (or create) a trailer note such as *Notes:* on an object. */
@@ -705,6 +764,58 @@ export function setNote(obj, label, body) {
   return note;
 }
 
+/**
+ * Give an object an anatomy table if it has none, so a "+ row" on a
+ * definition-only object works instead of dead-ending. Inserted after the
+ * definition, before any trailer notes.
+ */
+export function ensureTable(obj, columns) {
+  if (obj.table) return obj.table;
+  const headerCells = columns && columns.length
+    ? columns.slice()
+    : ['Type', 'Name', 'Cardinality', 'Note', SIGNOFF_HEADER];
+  const table = {
+    src: EOL, dirty: true,
+    headerCells,
+    colCount: headerCells.length,
+    cols: parseHeader(headerCells),
+    header: { src: EOL, dirty: true },
+    separator: { src: EOL, dirty: true },
+    rows: [],
+  };
+  obj.table = table;
+  // after the definition / also-called, before notes and trailing raw
+  let at = obj.segments.findIndex((sg) => sg.kind === 'note');
+  if (at < 0) {
+    const last = Math.max(
+      obj.segments.findIndex((sg) => sg.kind === 'alsoCalled'),
+      obj.segments.findIndex((sg) => sg.kind === 'definition'),
+      0,
+    );
+    at = last + 1;
+  }
+  obj.segments.splice(at, 0, { kind: 'raw', src: EOL }, { kind: 'table', ref: table });
+  return table;
+}
+
+/** Rename a note's label, keeping its position in the file. */
+export function setNoteLabel(obj, oldLabel, newLabel) {
+  const note = obj.notes.find((n) => n.label === oldLabel);
+  if (!note || !newLabel.trim() || newLabel === oldLabel) return false;
+  note.label = newLabel.trim();
+  note.dirty = true;
+  return true;
+}
+
+/** Remove a note outright, label and body together. */
+export function removeNote(obj, label) {
+  const note = obj.notes.find((n) => n.label === label);
+  if (!note) return false;
+  obj.notes = obj.notes.filter((n) => n !== note);
+  obj.segments = obj.segments.filter((sg) => sg.ref !== note);
+  return true;
+}
+
 /** Objects whose relationship rows point at this one. Derived, never stored. */
 export function backlinks(doc, id) {
   const out = [];
@@ -722,11 +833,11 @@ export function backlinks(doc, id) {
 
 /** Canonical cardinality options offered in the UI. `raw` stays authoritative. */
 export const CARDINALITIES = [
-  { value: '', label: 'not asked' },
+  { value: '', label: '' },
   { value: '—', label: 'n/a' },
-  { value: 'singular', label: 'singular — exactly one' },
-  { value: '0-many', label: '0-many — none or many' },
-  { value: '1-many', label: '1-many — at least one' },
+  { value: 'singular', label: 'singular' },
+  { value: '0-many', label: '0-many' },
+  { value: '1-many', label: '1-many' },
   { value: 'range', label: 'range' },
 ];
 
@@ -776,4 +887,39 @@ is the work. Sign a row off once design and engineering agree on it.
 | Type | Name | Cardinality | Note | Sign-off |
 | --- | --- | --- | --- | --- |
 `;
+}
+
+/**
+ * Move a row within its table. Rows are emitted in array order and keep their own
+ * source text, so a reorder is a pure position change — the two lines swap and
+ * nothing is re-rendered.
+ */
+export function moveRow(table, from, to) {
+  if (!table) return false;
+  const n = table.rows.length;
+  if (from < 0 || from >= n || to < 0 || to >= n || from === to) return false;
+  const [row] = table.rows.splice(from, 1);
+  table.rows.splice(to, 0, row);
+  return true;
+}
+
+/**
+ * Move an object relative to its neighbours. Each object block already contains its
+ * own trailing separator (a `---` is not a heading, so it falls inside the preceding
+ * section), which is why swapping whole blocks keeps the file structurally intact.
+ */
+export function moveObject(doc, id, dir) {
+  const positions = doc.blocks
+    .map((b, i) => (b.type === 'object' ? i : -1))
+    .filter((i) => i >= 0);
+  const at = positions.findIndex((i) => doc.blocks[i].id === id);
+  if (at < 0) return false;
+  const to = at + dir;
+  if (to < 0 || to >= positions.length) return false;
+  const a = positions[at], b = positions[to];
+  const tmp = doc.blocks[a];
+  doc.blocks[a] = doc.blocks[b];
+  doc.blocks[b] = tmp;
+  refreshObjects(doc);
+  return true;
 }

@@ -12,7 +12,7 @@
 #   The `serve` CLI rewrites HTML — it injects a favicon, adds data-source-lines
 #   attributes and bolts on an inline-comment layer that hooks text selection.
 #   Great for reading documents, wrong for an app with inline editing. This uses
-#   Python's stdlib http.server, which serves bytes untouched.
+#   serve.py, which serves bytes untouched AND disables caching.
 #
 # NOTES
 #   - Opening index.html by double-clicking does NOT work: file:// is an opaque
@@ -37,7 +37,10 @@ echo "Serving $DIR (Ctrl-C to stop)"
 echo
 
 cd "$DIR" || exit 1
-python3 -m http.server "$PORT" --bind 127.0.0.1 >/dev/null 2>&1 &
+# serve.py, not `python3 -m http.server`: the plain module sends no
+# Cache-Control, so a soft refresh can pair a fresh index.html with a stale
+# parser.js. That breaks the ES module import and renders as a blank page.
+python3 "$DIR/serve.py" "$PORT" >/dev/null 2>&1 &
 SERVER_PID=$!
 trap 'kill $SERVER_PID 2>/dev/null' EXIT
 

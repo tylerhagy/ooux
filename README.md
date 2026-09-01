@@ -154,3 +154,19 @@ repo — the fixture is a library catalogue.
 - Prioritized anatomy ordering (currently always shows as "not done")
 - Graph view
 - Import from the looser narrative object-map format
+
+## Using it with an AI agent
+
+`skills/orca/SKILL.md` is a [Claude Code](https://claude.com/claude-code) skill. Copy it in:
+
+```bash
+cp -r skills/orca ~/.claude/skills/
+```
+
+Then ask for an object map in plain language — "model the objects in this product" —
+and the agent drafts one from whatever notes exist, proves it round-trips with
+`validate.mjs`, and opens it here. Drafting is the agent's job; editing is ORCA's.
+
+`validate.mjs` exists for exactly this: anything *generating* a map can prove the
+result is editable before handing it over. The agent and the app run the same
+function, so they can never disagree about whether a file is safe.

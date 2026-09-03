@@ -2363,8 +2363,11 @@ function syncSegs() {
 
 $('fileName').onclick = openFolder;
 $('saveBtn').onclick = save;
-$('presentBtn').onclick = () => { S.present = true; S.view = 'card'; syncSegs(); renderStage(); };
-$('exitPresent').onclick = () => { S.present = false; syncSegs(); renderStage(); };
+function enterPresent() { S.present = true; S.view = 'card'; syncSegs(); renderStage(); }
+function leavePresent() { S.present = false; syncSegs(); renderStage(); }
+function togglePresent() { S.present ? leavePresent() : enterPresent(); }
+$('presentBtn').onclick = enterPresent;
+$('exitPresent').onclick = leavePresent;
 document.querySelectorAll('#viewSeg button').forEach((b) => (b.onclick = () => {
   S.scroll[S.view] = $('stage').scrollTop;
   S.view = b.dataset.view;
@@ -2403,6 +2406,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && S.capture) { setCapture(false); return; }
   const typing = /^(INPUT|TEXTAREA|SELECT)$/.test((e.target.tagName || '')) || e.target.isContentEditable;
   if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.key === 'p' || e.key === 'P') { e.preventDefault(); togglePresent(); return; }
   if (e.key === 'c' || e.key === 'C') { e.preventDefault(); setCapture(!S.capture); return; }
   if (!S.doc || !S.doc.objects.length) return;
   // Source is a check on what will be written, not a peer of the two real views.

@@ -3,31 +3,54 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ORCA — OOUX object maps</title>
+<title>object map</title>
+<!-- Family mark: rounded-square badge, shared across ORCA/jobmap/priority-guide.
+     Color is this app's own --accent blue; glyph is a small connected node
+     graph — objects and the relationships between them, the thing ORCA models. -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='rgb(37,99,235)'/><path d='M16 9L9 22M16 9L23 22M9 22L23 22' stroke='white' stroke-width='2' stroke-linecap='round'/><circle cx='16' cy='9' r='3' fill='white'/><circle cx='9' cy='22' r='3' fill='white'/><circle cx='23' cy='22' r='3' fill='white'/></svg>">
 <style>
 :root {
-  /* Shared with jobmap and protoserve: one palette across the family. */
-  --bg: #f6f7f9; --panel: #fff; --ink: #16181d; --muted: #6b7280; --faint: #9aa1ac;
-  --line: rgba(16,18,22,.11); --line-strong: rgba(16,18,22,.2);
+  /* Palette reconciled from shared/tokens.css (design-utilities repo) — the
+     source of truth for ORCA/jobmap/priority-guide. This is a manually-synced
+     copy, not an @import (none of the three apps takes on a build step); see
+     that file's README for how to re-check this block for drift. */
+  --bg: #f6f7f9; --panel: #fff; --ink: #16181d; --dim: #6b7280; --faint: #9aa1ac;
+  --line: rgba(16,18,22,.11); --line-2: rgba(16,18,22,.2);
   --btn-face: transparent; --btn-face-hover: rgba(16,18,22,.055); --btn-line: transparent;
+  /* Two steps of hover for an editable field: the row-level tint that shows you
+     WHICH cells are fields, and the stronger cell-level one under the pointer. */
+  --field-hover: rgba(16,18,22,.04); --field-edge: rgba(16,18,22,.14);
+  --scrim: rgba(16,18,22,.34);
   --accent: #2563eb; --accent-soft: rgba(37,99,235,.10); --on-accent: #fff;
-  --warn: #9a6700; --warn-soft: #fdf8ec;
+  --warn: #9a6700; --warn-soft: rgba(154,103,0,.11);
   --danger: #d0342c; --danger-soft: rgba(208,52,44,.09);
-  --signed: #177245; --signed-soft: rgba(23,114,69,.11); --on-signed: #fff;
-  --t-micro: 11px; --t-small: 12px; --t-body: 13px; --t-ui: 14px; --t-title: 16px; --t-display: 28px;
+  --ok: #177245; --ok-soft: rgba(23,114,69,.11); --on-ok: #fff;
+  --flag: #b8541f; --act: #b3261e; --none: #8a8f98;
+  /* One fixed colour per section, used at dot size only — never behind data.
+     ORCA-specific, not part of the shared token set. */
+  --oc-core: #2563a8; --oc-meta: #a3387f; --oc-rel: #96680f; --oc-cta: #17724a;
+  --t-micro: 11px; --t-small: 12.5px; --t-body: 13.5px; --t-ui: 14px; --t-title: 16px;
+  --t-lede: 17px; --t-display: 28px; --t-hero: 38px;
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 28px; --s7: 96px;
   --ctrl-h: 28px; --ctrl-h-sm: 24px; --row-pad-y: 4px;
-  --radius: 10px; --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --radius: 10px; --radius-sm: 7px; --ease: cubic-bezier(.22,.61,.36,1);
+  --shadow-sm: 0 1px 2px rgba(16,18,22,.04), 0 14px 34px -22px rgba(16,18,22,.30);
+  --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme=light]) {
-    --bg: #16171a; --panel: #1f2024; --ink: #f5f5f7; --muted: #98989d; --faint: #7c7c84;
-    --line: rgba(255,255,255,.13); --line-strong: rgba(255,255,255,.2);
+    --bg: #16171a; --panel: #1f2024; --ink: #f5f5f7; --dim: #98989d; --faint: #7c7c84;
+    --line: rgba(255,255,255,.13); --line-2: rgba(255,255,255,.2);
     --btn-face: transparent; --btn-face-hover: rgba(255,255,255,.09); --btn-line: transparent;
+    --field-hover: rgba(255,255,255,.055); --field-edge: rgba(255,255,255,.18);
+    --scrim: rgba(0,0,0,.55);
     --accent: #0a84ff; --accent-soft: rgba(10,132,255,.16); --on-accent: #fff;
     --warn: #e0b25a; --warn-soft: rgba(224,178,90,.13);
     --danger: #ff453a; --danger-soft: rgba(255,69,58,.14);
-    --signed: #30d158; --signed-soft: rgba(48,209,88,.14); --on-signed: #0e1a14;
+    --ok: #30d158; --ok-soft: rgba(48,209,88,.14); --on-ok: #0e1a14;
+    --flag: #ff9c52; --act: #ff6b5c; --none: #969ba6;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.3), 0 14px 34px -22px rgba(0,0,0,.6);
+    --oc-core: #64a9ff; --oc-meta: #f284cd; --oc-rel: #e3ae4c; --oc-cta: #45cf90;
   }
 }
 * { box-sizing: border-box; }
@@ -42,14 +65,15 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .cell:focus-visible { outline-offset: -2px; }
 .btn { background: var(--btn-face); border: 1px solid var(--btn-line); border-radius: 8px;
   height: var(--ctrl-h); padding: 0 11px; font-size: var(--t-small); font-weight: 500;
-  color: var(--muted); display: inline-flex; align-items: center; gap: 6px;
+  color: var(--dim); display: inline-flex; align-items: center; gap: 6px;
   transition: background 140ms cubic-bezier(.22,.61,.36,1), color 140ms cubic-bezier(.22,.61,.36,1); }
 .btn:hover { color: var(--ink); }
 .btn:hover { background: var(--btn-face-hover); }
 .btn:disabled { cursor: default; color: var(--faint); }
 .btn.sm { height: var(--ctrl-h-sm); padding: 0 8px; font-size: var(--t-small); }
-.btn.add { height: 22px; padding: 0 8px; font-size: var(--t-small); color: var(--muted); }
-.btn.add:hover { color: var(--ink); }
+.btn.add { height: 22px; padding: 0 8px; font-size: var(--t-small); font-weight: 500;
+  color: var(--accent); border-radius: 6px; }
+.btn.add:hover { color: var(--accent); background: var(--accent-soft); }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 500; }
 .btn.primary:hover { filter: brightness(1.08); }
 .btn.primary:disabled { background: var(--btn-face); border-color: var(--btn-line); color: var(--faint); opacity: 1; }
@@ -59,7 +83,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .seg { display: inline-flex; gap: 2px; padding: 3px; background: var(--btn-face-hover);
   border: 0; border-radius: 9px; }
 .seg button { height: var(--ctrl-h-sm); padding: 0 12px; border: 0; border-radius: 7px;
-  background: none; color: var(--muted); font-size: var(--t-small); font-weight: 500; }
+  background: none; color: var(--dim); font-size: var(--t-small); font-weight: 500; }
 .seg button:hover { color: var(--ink); }
 .seg button[aria-pressed=true] { background: var(--panel); color: var(--ink);
   box-shadow: 0 1px 2px rgba(0,0,0,.08); }
@@ -67,24 +91,31 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* header: fixed geometry so it can never change height --------------------- */
 header { display: flex; align-items: center; gap: var(--s3); flex-wrap: nowrap;
   min-height: 44px; padding: 8px var(--s4); background: var(--panel); border-bottom: 1px solid var(--line); }
-.brand { font-size: var(--t-micro); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--faint); }
-.filename { font-weight: 600; color: var(--ink); border: 0; background: none;
-  padding: 3px 7px; margin-left: -7px; border-radius: 7px; font-size: var(--t-ui);
-  max-width: 34ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.filename:hover { background: var(--btn-face-hover); }
-.status { flex: none; width: 118px; font-size: var(--t-small); color: var(--muted); }
+/* Brand + folder picker: shared literally, not just in spirit, with jobmap and
+   priority-guide — same weight/tracking on the name, same icon+label shape on
+   the picker, so the three read as one family of tools rather than three
+   one-off apps that happen to sit next to each other. */
+.brand { font-weight: 600; letter-spacing: -.01em; color: var(--ink); white-space: nowrap; }
+.file { color: var(--dim); white-space: nowrap; max-width: 28ch; cursor: pointer;
+  padding: 4px 8px; border-radius: 7px; display: flex; align-items: center; gap: 6px;
+  margin-left: -8px; border: 0; background: none; font: inherit; }
+.file span { overflow: hidden; text-overflow: ellipsis; }
+.file svg { color: var(--faint); flex: none; }
+.file:hover svg { color: var(--ink); }
+.file:hover { background: var(--btn-face-hover); color: var(--ink); }
+.status { flex: none; width: 118px; font-size: var(--t-small); color: var(--dim); }
 .status.dirty { color: var(--warn); font-weight: 600; }
 .spacer { flex: 1; }
 .headline { display: inline-flex; align-items: center; gap: var(--s2); flex: none;
-  font-size: var(--t-small); color: var(--muted); font-variant-numeric: tabular-nums; }
-.headline b { color: var(--signed); font-weight: 600; }
+  font-size: var(--t-small); color: var(--dim); font-variant-numeric: tabular-nums; }
+.headline b { color: var(--ok); font-weight: 600; }
 .headline .sigbar { width: 56px; }
 
 /* banners stay in flow; transient toasts never push the page --------------- */
 .banner { padding: 10px var(--s4); font-size: var(--t-body); border-bottom: 1px solid var(--line); position: relative; }
 .banner.err { background: var(--danger-soft); color: var(--danger); }
 .banner.warn { background: var(--warn-soft); color: var(--warn); }
-.banner.ok { background: var(--signed-soft); color: var(--signed); }
+.banner.ok { background: var(--ok-soft); color: var(--ok); }
 .banner code { font-family: var(--mono); font-size: var(--t-small); }
 .banner .x { position: absolute; right: 10px; top: 7px; border: 0; background: none; color: inherit; opacity: .6; }
 #toasts { position: fixed; right: var(--s4); bottom: var(--s4); z-index: 40;
@@ -97,34 +128,63 @@ main { flex: 1; display: flex; min-height: 0; }
 #rail { width: 232px; flex: none; border-right: 1px solid var(--line); background: var(--panel);
   overflow-y: auto; padding: 10px; }
 #stage { flex: 1; overflow-y: auto; padding: 0 26px var(--s7); }
-.rail-h { font-size: var(--t-micro); text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+.rail-h { font-size: var(--t-micro); text-transform: uppercase; letter-spacing: .06em; color: var(--dim);
   margin: var(--s3) 6px 5px; display: flex; align-items: center; gap: 6px; font-weight: 600; }
 .rail-row { display: flex; align-items: center; }
 .rail-row .rail-item { flex: 1; min-width: 0; }
 .rail-tools { display: flex; flex-direction: column; flex: none; }
 .rail-item { display: flex; align-items: center; gap: var(--s2); width: 100%; text-align: left;
   background: none; border: 0; border-radius: 6px; padding: 5px 7px; font-size: var(--t-body); }
-.rail-item:hover { background: var(--btn-face); }
+.rail-item:hover { background: var(--btn-face-hover); }
 .rail-item[aria-current=true] { background: var(--accent-soft); color: var(--ink); box-shadow: inset 2px 0 0 var(--accent); }
 .rail-item .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rail-item .ct { font-size: var(--t-micro); color: var(--faint); font-variant-numeric: tabular-nums; }
 .rail-item.muted .nm { color: var(--faint); }
 
 .sigbar { display: flex; height: 3px; overflow: hidden; background: var(--line); }
-.sigbar i { display: block; height: 100%; background: var(--signed); }
+.sigbar i { display: block; height: 100%; background: var(--ok); }
 
 /* map --------------------------------------------------------------------- */
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: var(--s3); padding-top: var(--s5); }
 .mini { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
   padding: var(--s3); text-align: left; width: 100%; }
-.mini:hover { background: var(--btn-face); border-color: var(--line-strong); }
+.mini:hover { background: var(--btn-face-hover); border-color: var(--line-2); }
 .mini h4 { margin: 0 0 var(--s1); font-size: var(--t-ui); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mini .def { font-size: var(--t-small); color: var(--muted); margin: 0 0 10px; min-height: 2.6em;
+.mini .def { font-size: var(--t-small); color: var(--dim); margin: 0 0 10px; min-height: 2.6em;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .mini .counts span { white-space: nowrap; }
 .mini .counts { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s2); margin-top: var(--s2); font-size: var(--t-micro);
   color: var(--faint); font-variant-numeric: tabular-nums; }
+
+/* A map above ~40 objects reads as overwhelming in cards, so List trades the
+   card panel for one line per object — same data (including the progress
+   bar), denser layout.
+   Each row is its own independent grid (so the row stays one clickable
+   button), which means "auto"-sized columns would size to THAT row's own
+   content — a long counts string on one row and a short one on the next
+   throws off the name/definition columns between them. Fixed widths on the
+   variable-length columns (counts, tail) are what keep every row's name and
+   definition lining up in one scannable rail down the page. */
+.mapnav { position: sticky; top: 0; z-index: 4; display: flex; align-items: center;
+  justify-content: space-between; padding: var(--s4) 0 var(--s3); background: var(--bg); }
+.mapnav .ct { font-size: var(--t-small); color: var(--faint); font-variant-numeric: tabular-nums; }
+.list-rows { display: flex; flex-direction: column; }
+.row-item { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(160px, 2fr) 230px 130px;
+  align-items: center; gap: var(--s4); width: 100%; text-align: left; background: none;
+  border: 0; border-top: 1px solid var(--line); padding: 8px 6px; border-radius: 6px; }
+.row-item:first-child { border-top: 0; }
+.row-item:hover { background: var(--btn-face-hover); }
+.row-item h4 { margin: 0; font-size: var(--t-body); font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row-item .def { margin: 0; font-size: var(--t-small); color: var(--dim);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row-item .counts { display: flex; gap: var(--s2); font-size: var(--t-micro); color: var(--faint);
+  font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row-item .tail { display: flex; align-items: center; justify-content: flex-end; gap: var(--s2); }
+.row-item .tail .prog { font-size: var(--t-small); color: var(--dim); font-variant-numeric: tabular-nums;
+  white-space: nowrap; min-width: 3.4em; text-align: right; }
+.row-item .tail .sigbar { width: 64px; flex: none; }
 
 /* card: no panel, no boxes — five section rules and one header row --------- */
 .card { background: none; border: 0; border-radius: 0; padding: 0; max-width: 1180px; }
@@ -133,36 +193,83 @@ main { flex: 1; display: flex; min-height: 0; }
   margin: 0 -26px 20px; padding: 0 26px; }
 .cardnav .navbtn { width: 26px; height: 26px; padding: 0; justify-content: center; }
 .cardnav .pos { font-size: var(--t-small); color: var(--faint); font-variant-numeric: tabular-nums; }
-.cardnav .prog { font-size: var(--t-small); color: var(--muted); font-variant-numeric: tabular-nums; }
+.cardnav .prog { font-size: var(--t-small); color: var(--dim); font-variant-numeric: tabular-nums; }
 .cardnav .sigbar { width: 64px; flex: none; }
-#nameIn { font-size: var(--t-title); font-weight: 600; letter-spacing: -.01em;
-  border: 1px solid transparent; background: none; color: inherit; border-radius: 6px;
-  padding: 3px 6px; font-family: inherit; field-sizing: content; min-width: 8ch; max-width: 44ch; width: auto; }
+.cardnav .navname { font-size: var(--t-body); font-weight: 600; color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 30ch; }
+
+/* The object header. Name, then definition, then nothing else — the two
+   questions you arrive with, answered before anything asks you to read a table. */
+.objhead { padding: 4px 0 0; margin-bottom: var(--s5); }
+#nameIn { display: block; font-size: var(--t-display); font-weight: 650; letter-spacing: -.022em;
+  line-height: 1.15; border: 1px solid transparent; background: none; color: var(--ink);
+  border-radius: 8px; padding: 2px 7px; margin: 0 -7px var(--s2); font-family: inherit;
+  field-sizing: content; min-width: 6ch; max-width: 26ch; width: auto; }
 #nameIn:hover { border-color: var(--line); }
+#nameIn:focus { border-color: var(--accent); background: var(--panel); outline: none; }
+#defEdit { font-size: var(--t-lede); line-height: 1.5; letter-spacing: -.005em;
+  color: var(--ink); max-width: 68ch; field-sizing: content; min-height: 1.5em; }
+#defEdit::placeholder { color: var(--faint); font-style: italic; }
 
 .sec { margin-top: var(--s6); padding-top: 14px; border-top: 1px solid var(--line); }
 .sec:first-of-type { margin-top: 20px; padding-top: 0; border-top: 0; }
 .sec-h { display: flex; align-items: center; gap: var(--s2); margin: 0 0 var(--s2);
-  font-size: var(--t-micro); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  font-size: var(--t-micro); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); }
 .sec .sec-h { position: sticky; top: 40px; z-index: 2; background: var(--bg); padding: 5px 0; }
 .sec-h .ct { color: var(--faint); font-weight: 400; letter-spacing: 0; }
-tr, .sec { scroll-margin-top: 76px; }
+tr, .sec, .grp { scroll-margin-top: 84px; }
+
+/* --- the ORCA groups ------------------------------------------------------
+   R, C and A get one tier; the kinds inside a group get a quieter one. Before
+   this, core content, metadata, actions and nested objects were four headings
+   of identical weight, which said they were four peer ideas. They are not:
+   metadata is a KIND OF ATTRIBUTE, and the card should say so without
+   anybody having to be told. */
+.grp { margin-top: 46px; }
+.grp:first-of-type { margin-top: 0; }
+.grp-h { position: sticky; top: 40px; z-index: 3; display: flex; align-items: baseline;
+  gap: var(--s2); padding: 7px 0 7px; margin-bottom: var(--s3); background: var(--bg);
+  border-bottom: 1px solid var(--line-2); }
+.grp-h .dot, .sub-h .dot { align-self: center; }
+.grp-h .btn.add, .sub-h .btn.add { margin-left: auto; align-self: center; }
+.grp-t { font-size: var(--t-body); font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--ink); }
+.grp-n { font-size: var(--t-small); color: var(--faint); font-variant-numeric: tabular-nums; }
+.grp .sub { margin-top: var(--s5); }
+.grp .sub:first-of-type { margin-top: 0; }
+.sub-h { display: flex; align-items: center; gap: var(--s2); margin: 0 0 var(--s2); }
+.sub-t { font-size: var(--t-ui); font-weight: 600; color: var(--ink); letter-spacing: -.005em; }
+.sub-n { font-size: var(--t-small); color: var(--faint); font-variant-numeric: tabular-nums; }
+.blurb { font-size: var(--t-small); color: var(--faint); font-weight: 400;
+  letter-spacing: 0; text-transform: none; }
+.grp-h .blurb { padding-left: var(--s1); }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--dim); }
+.dot.core { background: var(--oc-core); }
+.dot.meta { background: var(--oc-meta); }
+.dot.nested { background: var(--oc-rel); }
+.dot.action { background: var(--oc-cta); }
+.empty-sec { font-size: var(--t-small); color: var(--faint); padding: 2px 0 var(--s3) 16px;
+  font-style: italic; }
 
 .ta { width: 100%; border: 1px solid transparent; background: none; border-radius: 6px;
   padding: 6px 8px; margin: 0 -8px; font: inherit; color: inherit; resize: none; }
 .ta:hover { border-color: var(--line); }
-#defEdit { font-size: var(--t-ui); line-height: 1.55; max-width: 74ch; field-sizing: content; min-height: 2.6em; }
 #notesEdit { font-size: var(--t-body); max-width: 74ch; field-sizing: content; min-height: 2.4em; max-height: 12em; }
 
 table.rows { width: 100%; border-collapse: collapse; table-layout: fixed; }
 table.rows th { font-size: var(--t-micro); text-transform: uppercase; letter-spacing: .06em;
-  color: var(--muted); text-align: left; font-weight: 600; padding: 0 6px 4px; white-space: nowrap; }
+  color: var(--faint); text-align: left; font-weight: 600; padding: 0 6px 5px; white-space: nowrap; }
 table.rows td { padding: 3px 4px; border-top: 1px solid var(--line); vertical-align: top; position: relative; }
 table.rows tbody tr:first-child td { border-top: 0; }
 table.rows td.g-move, table.rows td.g-del, table.rows td.g-sign { padding-left: 0; padding-right: 0; }
 /* Hovering a row lights up each editable field SEPARATELY — the gaps between
-   them are what make three fields read as three fields and not one strip. */
-table.rows tbody tr:hover .cell:not(:disabled) { background: var(--btn-face); }
+   them are what make three fields read as three fields and not one strip.
+   A fill AND an edge, because most cells on a real map are empty and a tint on
+   nothing is invisible: the edge is what shows you where a field starts and
+   stops before you have committed to clicking. */
+table.rows tbody tr:hover .cell:not(:disabled),
+table.rows tbody tr:focus-within .cell:not(:disabled) {
+  background-color: var(--field-hover); border-color: var(--field-edge); }
 td.g-move, td.g-del, td.g-sign { padding-top: 5px; }
 td.g-sign { text-align: center; }
 td.c-name { display: flex; align-items: flex-start; gap: 6px; flex-wrap: nowrap; }
@@ -170,8 +277,9 @@ td.c-name .cell { flex: 1 1 auto; min-width: 0; }
 
 .cell { width: 100%; border: 1px solid transparent; background: none; border-radius: 5px;
   padding: var(--row-pad-y) 6px; font: inherit; font-size: var(--t-body); color: inherit; }
-.cell:hover:not(:disabled) { background: var(--btn-face-hover); }
-.cell:disabled { opacity: 1; color: var(--muted); -webkit-text-fill-color: var(--muted); cursor: default; }
+.cell:hover:not(:disabled) { background-color: var(--btn-face-hover); border-color: var(--line-2); }
+.cell:focus { background-color: var(--panel); border-color: var(--accent); outline: none; }
+.cell:disabled { opacity: 1; color: var(--dim); -webkit-text-fill-color: var(--dim); cursor: default; }
 textarea.cell { resize: none; overflow-y: auto; line-height: 1.45; }
 @supports (field-sizing: content) {
   textarea.cell { field-sizing: content; }
@@ -187,25 +295,39 @@ textarea.cell { resize: none; overflow-y: auto; line-height: 1.45; }
    digits in an account number and see at a glance whether codes are sequential
    or random. Muted so a populated example never outweighs the name beside it. */
 textarea.cell.example { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: var(--t-small); color: var(--muted); }
-textarea.cell.example::placeholder { color: var(--line-strong); }
-select.cell { appearance: none; width: 100%; text-overflow: ellipsis; color: var(--muted); }
-.qualchip { font-size: var(--t-micro); color: var(--muted); padding: 1px 6px; margin-top: 2px;
-  border-left: 2px solid var(--line-strong); }
+  font-size: var(--t-small); color: var(--dim); }
+textarea.cell.example::placeholder { color: var(--line-2); }
+select.cell { appearance: none; width: 100%; text-overflow: ellipsis; color: var(--dim);
+  padding-right: 17px; background-repeat: no-repeat; background-size: 4px 4px, 4px 4px;
+  background-position: calc(100% - 10px) calc(50% + 1px), calc(100% - 6px) calc(50% + 1px);
+  background-image: linear-gradient(45deg, transparent 50%, var(--faint) 50%),
+                    linear-gradient(135deg, var(--faint) 50%, transparent 50%); }
+/* A cardinality nobody has been asked for reads as unanswered, not as absent. */
+select.cell.unset { color: var(--faint); }
+select.cell:disabled { background-image: none; }
+.qualchip { font-size: var(--t-micro); color: var(--dim); padding: 1px 6px; margin-top: 2px;
+  border-left: 2px solid var(--line-2); }
 
 /* row state lives in 2px of left edge, never in the row background -------- */
 tr.rowdirty td:first-child::before { content: ''; position: absolute; left: 0; top: 3px; bottom: 3px;
   width: 2px; border-radius: 1px; background: var(--warn); }
-tr.signed .cell { color: var(--muted); }
-.lockbtn { width: 20px; height: 20px; padding: 0; border: 1px solid var(--btn-line);
-  background: var(--btn-face); border-radius: 4px; color: transparent; font-size: var(--t-micro);
-  line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
-.lockbtn:hover { background: var(--btn-face-hover); }
-.lockbtn.on { background: var(--signed); border-color: var(--signed); color: var(--on-signed); }
+tr.signed .cell { color: var(--dim); }
+/* An unsigned sign-off was a 20px square of nothing: transparent fill,
+   transparent border, transparent tick. "How much have we signed off on?" is
+   the headline question this tool exists to answer, and you cannot answer it
+   against a column you cannot see. It is an empty checkbox now. */
+.lockbtn { width: 18px; height: 18px; padding: 0; border: 1.5px solid var(--line-2);
+  background: var(--panel); border-radius: 4px; color: transparent; font-size: 10px;
+  line-height: 1; display: inline-flex; align-items: center; justify-content: center;
+  transition: border-color 120ms, color 120ms, background-color 120ms; }
+.lockbtn:hover:not(:disabled) { border-color: var(--ok); color: var(--ok);
+  background: var(--ok-soft); }
+.lockbtn.on, .lockbtn.on:hover { background: var(--ok); border-color: var(--ok);
+  color: var(--on-ok); }
 .lockbtn:disabled { opacity: 1; cursor: default; }
 .movebtn { display: block; width: 22px; height: 14px; padding: 0; border: 0; background: none;
   color: var(--faint); font-size: 10px; line-height: 14px; text-align: center; border-radius: 3px; }
-.movebtn:hover:not(:disabled) { background: var(--btn-face); color: var(--ink); }
+.movebtn:hover:not(:disabled) { background: var(--accent-soft); color: var(--accent); }
 .rowbtn { border: 0; background: none; color: var(--faint); padding: 2px 5px; border-radius: 4px; }
 .rowbtn:hover:not(:disabled) { background: var(--danger-soft); color: var(--danger); }
 .movebtn, .rowbtn { opacity: 0; transition: opacity 90ms; }
@@ -226,11 +348,17 @@ td.c-name.rel { flex-wrap: wrap; }
 .chip { display: inline-flex; align-items: center; gap: 1px; font-size: var(--t-micro);
   border-radius: 999px; padding: 1px 2px 1px 8px; border: 1px solid var(--accent);
   color: var(--accent); background: none; white-space: nowrap; }
-.chip.ghost { border-color: var(--line-strong); color: var(--faint); border-style: dashed; }
+/* An object defined in ANOTHER file. Grey and dashed read as broken — as a row
+   someone failed to finish — when it is in fact deliberate: this file is one
+   area of a larger map. Solid, filled and labelled says "elsewhere", not "missing". */
+.chip.ghost { border-color: var(--warn); color: var(--warn); border-style: dashed;
+  background: var(--warn-soft); }
+.chip.ghost .tlbl { cursor: pointer; }
+.chip.ghost .tlbl:hover { text-decoration: underline; }
+.chip .ext { font-size: 9px; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--warn); padding: 0 2px 0 5px; }
 .chip .tlbl { border: 0; background: none; color: inherit; padding: 0; font-size: inherit; }
 .chip .tlbl:hover { text-decoration: underline; }
-.chip.ghost .tlbl { cursor: default; }
-.chip.ghost .tlbl:hover { text-decoration: none; }
 .chipx { border: 0; background: none; color: inherit; padding: 0 4px; border-radius: 999px;
   opacity: 0; font-size: inherit; }
 tr:hover .chipx, tr:focus-within .chipx, .chipx:focus-visible { opacity: .6; }
@@ -238,31 +366,85 @@ tr:hover .chipx, tr:focus-within .chipx, .chipx:focus-visible { opacity: .6; }
 .addtarget { width: 20px; height: 18px; padding: 0; border: 1px dashed var(--btn-line);
   background: none; color: var(--faint); border-radius: 999px; font-size: var(--t-micro); line-height: 1;
   display: inline-flex; align-items: center; justify-content: center; }
-.addtarget:hover { background: var(--btn-face); color: var(--ink); border-style: solid; }
+.addtarget:hover { background: var(--accent-soft); color: var(--accent);
+  border-color: var(--accent); border-style: solid; }
 .tgtinput { font-size: var(--t-micro); border: 1px solid var(--accent); border-radius: 999px;
   padding: 1px 8px; background: var(--bg); color: var(--ink); width: 16ch; font-family: inherit; }
-.lbltext { font-size: var(--t-micro); color: var(--muted); }
+.lbltext { font-size: var(--t-micro); color: var(--dim); }
 
-.notes { border-left: 2px solid var(--line-strong); padding-left: var(--s3); margin: 0; }
-.notes .nrow { display: flex; align-items: flex-start; gap: var(--s2); margin-bottom: 2px; }
-.notes .nlbl { flex: none; width: 96px; font-size: var(--t-micro); text-transform: uppercase;
-  letter-spacing: .06em; font-weight: 600; color: var(--muted); font-family: inherit;
-  background: none; border: 1px solid transparent; border-radius: 5px; padding: 3px 5px; }
+/* A note is a SENTENCE with a word in front of it, the way it reads in the
+   markdown — *Open:* … — not a titled field. The label used to sit in its own
+   96px uppercase column, which made naming the note look like step one of
+   writing it. It is now an inline word you can change and mostly won't. */
+.notes { border-left: 2px solid var(--line-2); padding-left: var(--s3); margin: 0; }
+.notes .nrow { display: flex; align-items: baseline; gap: 0; margin-bottom: 6px; }
+.notes .nlbl { flex: none; width: auto; min-width: 2ch; max-width: 20ch;
+  font-size: var(--t-body); font-weight: 600; color: var(--ink); font-family: inherit;
+  background: none; border: 1px solid transparent; border-radius: 5px; padding: 2px 0 2px 4px; }
+@supports (field-sizing: content) { .notes .nlbl { field-sizing: content; } }
 .notes .nlbl:hover { border-color: var(--line); }
-.notes .nlbl:focus { border-color: var(--accent); background: var(--bg); outline: none; }
-.notes .ndel { opacity: 0; flex: none; margin-top: 2px; }
+.notes .nlbl:focus { border-color: var(--accent); background: var(--panel); outline: none; }
+.notes .ncolon { flex: none; font-size: var(--t-body); font-weight: 600; color: var(--ink);
+  margin-left: -1px; margin-right: 7px; }
+.notes .ndel { opacity: 0; flex: none; margin-left: var(--s2); }
 .notes .nrow:hover .ndel, .notes .nrow:focus-within .ndel { opacity: .6; }
 .notes .nrow:last-child { margin-bottom: 0; }
 .notes .nbody { flex: 1; min-width: 0; font-size: var(--t-body); line-height: 1.5;
   field-sizing: content; padding: 2px 6px; margin: 0; }
+.notes .nbody::placeholder { color: var(--faint); }
 .notes .lbl { padding-top: 3px; }
 
-.backlink { display: flex; gap: var(--s2); align-items: baseline; padding: 4px 0;
-  border-top: 1px solid var(--line); font-size: var(--t-body); }
-.backlink button { border: 0; background: none; color: var(--accent); padding: 0; font-weight: 600; }
-.backlink .c { font-size: var(--t-small); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.empty-note { color: var(--muted); font-size: var(--t-body); }
-.cardfoot { display: flex; align-items: flex-start; gap: var(--s4); border-top: 1px solid var(--line-strong);
+/* Referenced by IS a table, so it is laid out as one: three columns that line
+   up down the page, and a note that wraps. Clipping the note to one nowrap line
+   hid the only thing the section is for — WHY the other object points here. */
+.backlinks { display: grid; grid-template-columns: minmax(7rem, max-content) max-content 1fr;
+  gap: 0 var(--s4); align-items: baseline; }
+.backlinks .bh { font-size: var(--t-micro); text-transform: uppercase; letter-spacing: .06em;
+  color: var(--dim); font-weight: 600; padding-bottom: 5px; }
+.backlinks .bc { padding: 7px 0; border-top: 1px solid var(--line); min-width: 0; }
+.backlinks .bc.from button { border: 0; background: none; color: var(--accent); padding: 0;
+  font-weight: 600; font-size: var(--t-body); text-align: left; }
+.backlinks .bc.from button:hover { text-decoration: underline; }
+.backlinks .bc.card { font-size: var(--t-small); color: var(--dim); white-space: nowrap;
+  font-variant-numeric: tabular-nums; }
+.backlinks .bc.note { font-size: var(--t-small); color: var(--dim); line-height: 1.5; }
+.backlinks .bc.blank { color: var(--faint); }
+.empty-note { color: var(--dim); font-size: var(--t-body); }
+
+/* One dialog, inside the app. The browser's own is captioned "localhost:8042
+   says", which reads as a page ORCA does not control — and it cannot carry a
+   third choice, or a verb on its buttons instead of OK and Cancel. */
+.scrim { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center;
+  justify-content: center; padding: var(--s4); background: var(--scrim);
+  animation: scrimin 110ms ease-out; }
+@keyframes scrimin { from { opacity: 0 } to { opacity: 1 } }
+.dlg { width: min(430px, 100%); background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: var(--s5);
+  box-shadow: 0 16px 48px rgba(0,0,0,.24), 0 2px 8px rgba(0,0,0,.12);
+  animation: dlgin 130ms cubic-bezier(.22,.61,.36,1); }
+@keyframes dlgin { from { opacity: 0; transform: translateY(6px) scale(.985) } to { opacity: 1 } }
+.dlg h2 { margin: 0 0 var(--s2); font-size: var(--t-title); font-weight: 600; letter-spacing: -.01em; }
+.dlg p { margin: 0 0 var(--s3); font-size: var(--t-body); color: var(--dim); line-height: 1.55; }
+.dlg p:last-of-type { margin-bottom: var(--s4); }
+.dlg p b { color: var(--ink); font-weight: 600; }
+.dlg .dlgin { width: 100%; height: 32px; margin-bottom: var(--s4); padding: 0 9px;
+  font: inherit; font-size: var(--t-body); color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line-2); border-radius: 7px; }
+.dlg .dlgin:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+.dlg .acts { display: flex; justify-content: flex-end; gap: var(--s2); }
+.dlg .acts .btn { height: 30px; }
+.dlg .acts .btn.plain { border-color: var(--line); color: var(--dim); }
+.dlg .acts .btn.plain:hover { color: var(--ink); }
+.dlg .acts .btn.danger { background: var(--danger); border-color: var(--danger);
+  color: #fff; font-weight: 500; }
+.dlg .acts .btn.danger:hover { filter: brightness(1.08); }
+@media (prefers-reduced-motion: reduce) { .scrim, .dlg { animation: none } }
+#capScrim { display: none; }
+body[data-capture] #capScrim { display: flex; }
+.dlg .acts .captally { margin-right: auto; font-size: var(--t-small); color: var(--faint);
+  font-variant-numeric: tabular-nums; }
+.cardfoot { display: flex; align-items: flex-start; gap: var(--s4); border-top: 1px solid var(--line-2);
   margin-top: 32px; padding-top: var(--s4); }
 .cardfoot .sec-h { position: static; }
 
@@ -272,22 +454,22 @@ tr:hover .chipx, tr:focus-within .chipx, .chipx:focus-visible { opacity: .6; }
   margin: 0 -26px var(--s3); padding: 0 26px; }
 .gbar select { height: var(--ctrl-h-sm); font: inherit; font-size: var(--t-small); color: var(--ink);
   background: var(--btn-face); border: 1px solid var(--btn-line); border-radius: 6px; padding: 0 6px; }
-.gbar .note { font-size: var(--t-small); color: var(--muted); font-variant-numeric: tabular-nums; }
+.gbar .note { font-size: var(--t-small); color: var(--dim); font-variant-numeric: tabular-nums; }
 .gwrap { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); overflow: hidden; }
 svg.graph { display: block; width: 100%; height: 62vh; cursor: grab; touch-action: none; }
 svg.graph.drag { cursor: grabbing; }
-svg.graph .nd rect { fill: var(--bg); stroke: var(--line-strong); stroke-width: 1; }
+svg.graph .nd rect { fill: var(--bg); stroke: var(--line-2); stroke-width: 1; }
 svg.graph .nd text { font-size: 12px; fill: var(--ink); }
 svg.graph .nd.ghost rect { stroke-dasharray: 3 3; fill: none; }
 svg.graph .nd.ghost text { fill: var(--faint); }
 svg.graph .nd.sel rect { stroke: var(--accent); stroke-width: 2; fill: var(--accent-soft); }
 svg.graph .nd { cursor: pointer; }
 svg.graph .nd:hover rect { stroke: var(--accent); }
-svg.graph .eg { stroke: var(--line-strong); stroke-width: 1.25; fill: none; }
-svg.graph .eg.signed { stroke: var(--signed); stroke-width: 1.75; }
+svg.graph .eg { stroke: var(--line-2); stroke-width: 1.25; fill: none; }
+svg.graph .eg.signed { stroke: var(--ok); stroke-width: 1.75; }
 svg.graph .eg.contested { stroke: var(--warn); stroke-width: 1.5; stroke-dasharray: 5 3; }
 svg.graph .gq { font-size: 11px; font-weight: 600; fill: var(--warn); }
-svg.graph .gl { stroke: var(--line-strong); stroke-width: 1.25; fill: none; }
+svg.graph .gl { stroke: var(--line-2); stroke-width: 1.25; fill: none; }
 svg.graph .gl.open { fill: var(--panel); }
 svg.graph .dim { opacity: .18; }
 svg.graph .gnote { font-size: 10px; fill: var(--faint); letter-spacing: .06em; text-transform: uppercase; }
@@ -304,13 +486,13 @@ svg.graph .gnote { font-size: 10px; fill: var(--faint); letter-spacing: .06em; t
 .greadout { display: flex; align-items: center; gap: var(--s2); min-height: 34px;
   padding: 6px var(--s3); border-top: 1px solid var(--line); background: var(--bg);
   font-size: var(--t-body); color: var(--ink); }
-.greadout .hint { color: var(--muted); }
+.greadout .hint { color: var(--dim); }
 .greadout b { font-weight: 600; }
 .greadout .tag { font-size: var(--t-micro); text-transform: uppercase; letter-spacing: .06em;
-  border-radius: 999px; padding: 1px 8px; border: 1px solid var(--line-strong); color: var(--muted); }
-.greadout .tag.signed { border-color: var(--signed); color: var(--signed); }
+  border-radius: 999px; padding: 1px 8px; border: 1px solid var(--line-2); color: var(--dim); }
+.greadout .tag.signed { border-color: var(--ok); color: var(--ok); }
 .greadout .tag.contested { border-color: var(--warn); color: var(--warn); }
-.greadout .tag.open { border-color: var(--line-strong); color: var(--faint); }
+.greadout .tag.open { border-color: var(--line-2); color: var(--faint); }
 .gkey { display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--s1);
   padding: 6px var(--s3) 8px; border-top: 1px solid var(--line); background: var(--panel); }
 .gkey .grp { font-size: var(--t-micro); text-transform: uppercase; letter-spacing: .06em;
@@ -318,20 +500,20 @@ svg.graph .gnote { font-size: 10px; fill: var(--faint); letter-spacing: .06em; t
 .gkey .grp + .grp, .gkey .ki + .grp { margin-left: var(--s4); }
 .ki { display: inline-flex; align-items: center; gap: 5px; border: 1px solid transparent;
   background: none; border-radius: 999px; padding: 2px 8px; font-size: var(--t-small);
-  color: var(--muted); }
-.ki:hover, .ki:focus-visible { background: var(--btn-face); color: var(--ink); }
+  color: var(--dim); }
+.ki:hover, .ki:focus-visible { background: var(--btn-face-hover); color: var(--ink); }
 .ki svg { vertical-align: middle; }
-.ki svg line { stroke: var(--line-strong); stroke-width: 1.25; }
-.ki svg line.sgn { stroke: var(--signed); stroke-width: 1.75; }
+.ki svg line { stroke: var(--line-2); stroke-width: 1.25; }
+.ki svg line.sgn { stroke: var(--ok); stroke-width: 1.75; }
 .ki svg line.ctd { stroke: var(--warn); stroke-width: 1.5; stroke-dasharray: 5 3; }
-.ki svg circle.openswatch { fill: var(--panel); stroke: var(--line-strong); stroke-width: 1.25; }
+.ki svg circle.openswatch { fill: var(--panel); stroke: var(--line-2); stroke-width: 1.25; }
 .ki .sw { display: inline-block; width: 11px; height: 11px; border-radius: 3px;
-  border: 1px solid var(--line-strong); }
-.ki .sw.signed { background: var(--signed-soft); border-color: var(--signed); }
+  border: 1px solid var(--line-2); }
+.ki .sw.signed { background: var(--ok-soft); border-color: var(--ok); }
 .ki .sw.contested { background: var(--warn-soft); border-color: var(--warn); }
 .ki .sw.inv { position: relative; background: var(--panel); }
 .ki .sw.inv::after { content: ''; position: absolute; inset: 0; margin: auto; width: 4px; height: 4px;
-  border-radius: 50%; border: 1px solid var(--line-strong); }
+  border-radius: 50%; border: 1px solid var(--line-2); }
 .ki .tok { font-weight: 700; color: var(--ink); min-width: 12px; text-align: center; }
 
 /* pointing at a key item dims everything it does not describe */
@@ -356,25 +538,25 @@ table.gmx thead th { position: sticky; top: 0; z-index: 2; background: var(--pan
 table.gmx th.corner { left: 0; z-index: 4; background: var(--panel); }
 table.gmx th.vh { width: 30px; height: 156px; }
 table.gmx th.vh span { display: inline-block; writing-mode: vertical-rl; transform: rotate(180deg);
-  font-size: var(--t-micro); font-weight: 600; color: var(--muted); padding: 8px 0 6px;
+  font-size: var(--t-micro); font-weight: 600; color: var(--dim); padding: 8px 0 6px;
   max-height: 148px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 table.gmx th.vh.ghost span { color: var(--faint); font-weight: 400; }
 table.gmx th.rh { position: sticky; left: 0; z-index: 3; background: var(--panel);
   text-align: left; font-weight: 400; padding: 0;
-  border-right: 1px solid var(--line-strong); }
+  border-right: 1px solid var(--line-2); }
 table.gmx th.rh button { border: 0; background: none; color: var(--ink); font: inherit;
   font-size: var(--t-body); padding: 0 var(--s3) 0 10px; height: 30px; width: 100%;
   max-width: 210px; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 table.gmx th.rh button:hover { color: var(--accent); }
-table.gmx thead th.vh { border-bottom: 1px solid var(--line-strong); }
+table.gmx thead th.vh { border-bottom: 1px solid var(--line-2); }
 table.gmx td { width: 30px; height: 30px; text-align: center; font-size: var(--t-small);
   color: var(--faint); box-shadow: inset -1px -1px 0 var(--line); }
 table.gmx td.mx { color: var(--accent); font-weight: 700; background: var(--accent-soft); }
-table.gmx td.mx.signed { background: var(--signed-soft); color: var(--signed); }
+table.gmx td.mx.signed { background: var(--ok-soft); color: var(--ok); }
 table.gmx td.mx.contested { background: var(--warn-soft); color: var(--warn); }
 table.gmx td.self { background: var(--bg); }
 table.gmx td.inverse::after { content: ''; display: block; width: 5px; height: 5px; margin: 0 auto;
-  border-radius: 50%; border: 1px solid var(--line-strong); }
+  border-radius: 50%; border: 1px solid var(--line-2); }
 /* crosshair, driven by data attributes set on hover */
 table.gmx[data-r] tbody tr[data-row] { background: none; }
 table.gmx tbody tr.xrow { background: color-mix(in srgb, var(--btn-face) 46%, transparent); }
@@ -393,26 +575,32 @@ pre.source mark { background: var(--accent-soft); color: inherit; }
 body[data-mode=confidence] tr:not(.signed) { opacity: .45; }
 body[data-mode=confidence] tr:not(.signed):hover { opacity: 1; }
 body[data-mode=confidence] tr:not(.signed) :is(.lockbtn, .rowbtn, .movebtn) { visibility: hidden; }
-body[data-mode=confidence] .mini[data-signed="0"] { opacity: .45; }
+body[data-mode=confidence] :is(.mini, .row-item)[data-signed="0"] { opacity: .45; }
 
 body[data-present=true] header, body[data-present=true] #rail { display: none; }
 body[data-present=true] #stage { padding: 0 34px var(--s5); }
 body[data-present=true] .card { max-width: 1100px; width: 100%; }
-body[data-present=true] #nameIn { font-size: var(--t-display); max-width: none; }
+body[data-present=true] #nameIn { font-size: var(--t-hero); max-width: none; }
+body[data-present=true] #defEdit { font-size: 21px; }
+body[data-present=true] .objhead { margin-bottom: var(--s6); }
 body[data-present=true] .cardnav { height: 56px; padding-right: 136px; }
+body[data-present=true] .grp-h, body[data-present=true] .sec .sec-h { top: 56px; }
 .exit-present { display: none; position: fixed; top: 14px; right: var(--s4); z-index: 30; }
 body[data-present=true] .exit-present { display: block; }
 
 .welcome { max-width: 620px; margin: 8vh auto; text-align: center; }
 .welcome h1 { font-size: var(--t-display); margin-bottom: 6px; }
-.welcome p { color: var(--muted); }
+.welcome p { color: var(--dim); }
 </style>
 </head>
 <body>
 
 <header>
-  <span class="brand">ORCA</span>
-  <button class="filename" id="fileName" title="Open a different folder">no folder open</button>
+  <span class="brand">object&nbsp;map</span>
+  <button class="file" id="fileName" title="Open a different folder">
+    <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 3.5h4.2l1.4 2h7.4v7.5a1 1 0 01-1 1H2.5a1 1 0 01-1-1z"/></svg>
+    <span id="fileNameLabel">no folder open</span>
+  </button>
   <span class="status" id="status"></span>
   <span class="spacer"></span>
   <span class="headline" id="headline"></span>
@@ -436,12 +624,27 @@ body[data-present=true] .exit-present { display: block; }
 <div id="toasts"></div>
 <button class="btn exit-present" id="exitPresent">Exit present</button>
 
+<div class="scrim" id="capScrim">
+  <div class="dlg" id="capture" role="dialog" aria-modal="true" aria-label="Capture an object">
+    <h2>Capture</h2>
+    <p>Type an object's name and press <b>Enter</b> — it opens the object if one already exists,
+      or offers to create it if it doesn't. The box clears and keeps focus, so you can capture
+      several objects in a row. <b>Escape</b> closes.</p>
+    <input class="dlgin" id="capName" list="capNames" placeholder="Object name, then Enter" autocomplete="off">
+    <datalist id="capNames"></datalist>
+    <div class="acts">
+      <span class="captally" id="capTally"></span>
+      <button class="btn plain" id="capDone">Done</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 import {
   parseDocument, serializeDocument, verifyRoundTrip, refreshObjects,
   slug, CARDINALITIES, composeCardinality, parseCardinality,
   signOffCol, addSignOffColumn, isSigned, signRow, unsignRow,
-  addObject, removeObject, renameObject, setNote, backlinks, blankMap,
+  addObject, removeObject, renameObject, setNote, createNote, backlinks, blankMap,
   moveRow, moveObject, setRowTargets, ensureTable, deriveEdges,
   setNoteLabel, removeNote,
 } from './parser.js';
@@ -519,8 +722,8 @@ async function backup(name, text) {
    =========================================================================== */
 const S = {
   dir: null, files: [], file: null, doc: null, originalText: '',
-  readOnly: false, view: 'map', mode: 'normal', present: false,
-  selected: null, dirty: false, onlyMaps: true,
+  readOnly: false, view: 'map', mapView: 'cards', mode: 'normal', present: false,
+  selected: null, dirty: false, onlyMaps: true, capture: false, captured: 0,
   scroll: { map: 0, card: 0, source: 0, graph: 0 },
   graph: { focus: '', depth: 1, vb: null },
 };
@@ -575,6 +778,71 @@ function banner(kind, html, sticky) {
   return d;
 }
 const clearBanners = () => ($('banners').innerHTML = '');
+
+/**
+ * The one dialog. Everything that used to call the browser's `confirm()` or
+ * `prompt()` goes through here instead.
+ *
+ * Returns a promise. A confirm resolves true or false; a prompt (pass `value`,
+ * even an empty string) resolves the typed text or null. Buttons take verbs —
+ * "Delete", "Create it", "Overwrite" — because OK and Cancel make you re-read
+ * the question to work out which one you want.
+ */
+let dialogsOpen = 0;
+function ask(o) {
+  return new Promise((resolve) => {
+    dialogsOpen++;
+    const prompting = typeof o.value === 'string';
+    const scrim = document.createElement('div');
+    scrim.className = 'scrim';
+    scrim.innerHTML = `<div class="dlg" role="dialog" aria-modal="true" aria-label="${esc(o.title)}">` +
+      `<h2>${esc(o.title)}</h2>` +
+      (o.body ? `<p>${o.body}</p>` : '') +
+      (prompting
+        ? `<input class="dlgin" value="${esc(o.value)}"${o.placeholder ? ` placeholder="${esc(o.placeholder)}"` : ''}>`
+        : '') +
+      `<div class="acts">` +
+        `<button class="btn plain" data-act="cancel">${esc(o.cancel || 'Cancel')}</button>` +
+        (o.alt ? `<button class="btn plain" data-act="alt">${esc(o.alt)}</button>` : '') +
+        `<button class="btn ${o.danger ? 'danger' : 'primary'}" data-act="ok">${esc(o.ok || 'OK')}</button>` +
+      `</div></div>`;
+    document.body.appendChild(scrim);
+
+    const inp = scrim.querySelector('.dlgin');
+    const prior = document.activeElement;
+    let done = false;
+    const close = (v) => {
+      if (done) return;
+      done = true;
+      dialogsOpen--;
+      document.removeEventListener('keydown', key, true);
+      scrim.remove();
+      if (prior && prior.isConnected && prior.focus) prior.focus();
+      resolve(v);
+    };
+    const no = () => close(prompting ? null : false);
+    const yes = () => close(prompting ? (oneLine(inp.value).trim() || null) : true);
+    const key = (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); no(); return; }
+      if (e.key !== 'Enter') return;
+      const act = document.activeElement && document.activeElement.dataset
+        ? document.activeElement.dataset.act : null;
+      if (act === 'cancel' || act === 'alt') return;   // let the button take it
+      e.preventDefault(); e.stopPropagation(); yes();
+    };
+    document.addEventListener('keydown', key, true);
+    scrim.querySelector('[data-act=cancel]').onclick = no;
+    scrim.querySelector('[data-act=ok]').onclick = yes;
+    const alt = scrim.querySelector('[data-act=alt]');
+    if (alt) alt.onclick = () => close('alt');
+    // A click that STARTS on the backdrop dismisses; a drag that ends there
+    // after selecting text inside the dialog must not.
+    scrim.onmousedown = (e) => { if (e.target === scrim) no(); };
+
+    if (inp) { inp.focus(); inp.select(); }
+    else scrim.querySelector('[data-act=ok]').focus();
+  });
+}
 
 function setStatus() {
   const el = $('status');
@@ -714,17 +982,66 @@ function goTo(id) {
 }
 
 /* ===========================================================================
+   capture mode — a stakeholder names objects faster than a table can be
+   filled in. One input, no fields: type a name, Enter creates or opens it,
+   the box clears and keeps focus so several objects can land in a row.
+   =========================================================================== */
+function setCapture(on) {
+  if (on && (!S.doc || S.readOnly)) return;
+  S.capture = on;
+  document.body.toggleAttribute('data-capture', on);
+  if (on) {
+    S.captured = 0;
+    $('capTally').textContent = '';
+    renderCaptureNames();
+    const inp = $('capName');
+    inp.value = '';
+    setTimeout(() => inp.focus(), 0);
+  }
+}
+
+function renderCaptureNames() {
+  $('capNames').innerHTML = S.doc.objects.map((o) => `<option value="${esc(o.name)}"></option>`).join('');
+}
+
+async function doCapture() {
+  const input = $('capName');
+  const name = oneLine(input.value);
+  if (!name || !S.doc || S.readOnly) return;
+  const id = slug(name);
+  const existing = S.doc.objects.find((o) => o.id === id);
+  if (existing) {
+    goTo(existing.id);
+  } else {
+    const go = await ask({
+      title: `Create “${name}”?`,
+      body: `There is no object called <b>${esc(name)}</b> in this file yet.`,
+      ok: 'Create it',
+    });
+    if (!go) { input.focus(); input.select(); return; }
+    addObject(S.doc, name);
+    markDirty();
+    goTo(id);
+  }
+  S.captured++;
+  $('capTally').textContent = `${S.captured} captured this session`;
+  renderCaptureNames();
+  input.value = '';
+  input.focus();
+}
+
+/* ===========================================================================
    stage
    =========================================================================== */
 function renderStage() {
   const stage = $('stage');
   if (!S.doc) {
     stage.innerHTML = `<div class="welcome">
-      <h1>ORCA</h1>
+      <h1>object map</h1>
       <p>An OOUX object map you can edit — objects, attributes, actions and relationships,
       each row signed off once design and engineering agree on it.</p>
       <p style="margin-top:22px"><button class="btn primary" id="openBtn2">Open a folder</button></p>
-      <p style="font-size:13px;color:var(--muted)">Pick any folder — an existing map opens straight away,
+      <p style="font-size:13px;color:var(--dim)">Pick any folder — an existing map opens straight away,
       and if there is nothing there yet you can start one with <b>+</b> next to Files.</p>
       <p style="font-size:12px;color:var(--faint);margin-top:26px">
         Markdown stays the source of truth. Nothing you did not edit is ever rewritten.</p>
@@ -743,7 +1060,15 @@ function renderMap(stage) {
     stage.innerHTML = `<p class="empty-note" style="padding-top:24px">No objects in this file.</p>`;
     return;
   }
-  let html = '<div class="grid">';
+  const dense = S.mapView === 'list';
+  let html = `<div class="mapnav">
+    <div class="seg" id="mapViewSeg">
+      <button data-mapview="cards" aria-pressed="${dense ? 'false' : 'true'}">Cards</button>
+      <button data-mapview="list" aria-pressed="${dense ? 'true' : 'false'}">List</button>
+    </div>
+    <span class="ct">${S.doc.objects.length} object${S.doc.objects.length === 1 ? '' : 's'}</span>
+  </div>`;
+  html += dense ? '<div class="list-rows">' : '<div class="grid">';
   for (const o of S.doc.objects) {
     const c = objCounts(o), st = objSigned(o);
     const parts = [];
@@ -751,19 +1076,35 @@ function renderMap(stage) {
     if (c.meta) parts.push(`<span>${c.meta} meta</span>`);
     if (c.nested) parts.push(`<span>${c.nested} nested</span>`);
     if (c.action) parts.push(`<span>${c.action} action${c.action === 1 ? '' : 's'}</span>`);
-    const tail = st.total
-      ? `<span style="margin-left:auto">${st.signed}/${st.total}</span>`
-      : `<span style="margin-left:auto">not started</span>`;
-    html += `<button class="mini" data-id="${esc(o.id)}" data-signed="${st.signed}">
-      <h4 title="${esc(o.name)}">${esc(o.name)}</h4>
-      <p class="def">${esc(o.definition ? o.definition.text.replace(/\*\*/g, '') : '')}</p>
-      ${st.total ? `<div class="sigbar"><i style="width:${pct(st)}%"></i></div>` : ''}
-      <div class="counts">${parts.join('')}${tail}</div>
-    </button>`;
+    const def = esc(o.definition ? o.definition.text.replace(/\*\*/g, '') : '');
+    const prog = st.total ? `${st.signed}/${st.total}` : 'not started';
+    if (dense) {
+      html += `<button class="row-item" data-id="${esc(o.id)}" data-signed="${st.signed}">
+        <h4 title="${esc(o.name)}">${esc(o.name)}</h4>
+        <p class="def" title="${def}">${def}</p>
+        <span class="counts">${parts.join('')}</span>
+        <span class="tail">
+          <span class="prog">${prog}</span>
+          ${st.total ? `<div class="sigbar"><i style="width:${pct(st)}%"></i></div>` : ''}
+        </span>
+      </button>`;
+    } else {
+      html += `<button class="mini" data-id="${esc(o.id)}" data-signed="${st.signed}">
+        <h4 title="${esc(o.name)}">${esc(o.name)}</h4>
+        <p class="def">${def}</p>
+        ${st.total ? `<div class="sigbar"><i style="width:${pct(st)}%"></i></div>` : ''}
+        <div class="counts">${parts.join('')}<span style="margin-left:auto">${prog}</span></div>
+      </button>`;
+    }
   }
   html += '</div>';
   stage.innerHTML = html;
-  stage.querySelectorAll('.mini').forEach((el) => (el.onclick = () => goTo(el.dataset.id)));
+  stage.querySelectorAll('.mini, .row-item').forEach((el) => (el.onclick = () => goTo(el.dataset.id)));
+  document.querySelectorAll('#mapViewSeg button').forEach((b) => (b.onclick = (e) => {
+    e.stopPropagation();
+    S.mapView = b.dataset.mapview;
+    renderMap(stage);
+  }));
 }
 
 function renderSource(stage) {
@@ -786,12 +1127,32 @@ function renderSource(stage) {
     <pre class="source">${out.join('\n')}</pre>`;
 }
 
+/* Name and definition sit at the top of the card; every row below belongs to
+   one of three groups. Core content and metadata are both attributes, so they
+   nest inside Attributes rather than sitting beside Relationships as though the
+   four were peers.
+
+   `cols` is which columns a section has a question for — a call to action has
+   no cardinality and no example, so it is not asked for either.
+
+   `type` is what gets written to the markdown and has not changed. Everything
+   else here is what the screen says. */
 const SECTIONS = [
-  { key: 'core', type: 'core', label: 'Core Content', match: (r) => r.kind === 'attribute' && r.slot === 'core' },
-  { key: 'meta', type: 'meta', label: 'Metadata', match: (r) => r.kind === 'attribute' && r.slot === 'meta' },
-  { key: 'action', type: 'action \u00b7 primary', label: 'Actions', match: (r) => r.kind === 'action' },
-  { key: 'nested', type: 'nested', label: 'Nested Objects', match: (r) => r.kind === 'relationship' },
-  { key: 'other', type: '', label: 'Annotations', match: (r) => r.kind === 'annotation' || r.kind === 'unknown' },
+  { key: 'core', type: 'core', group: 'Attributes', label: 'Core content',
+    blurb: 'what this object carries', cols: { card: true, example: true },
+    match: (r) => r.kind === 'attribute' && r.slot === 'core' },
+  { key: 'meta', type: 'meta', group: 'Attributes', label: 'Metadata',
+    blurb: 'what you would filter, sort or group by', cols: { card: true, example: true },
+    match: (r) => r.kind === 'attribute' && r.slot === 'meta' },
+  { key: 'nested', type: 'nested', group: 'Relationships', label: 'Nested objects',
+    blurb: 'the objects that live inside this one', cols: { card: true, example: true },
+    match: (r) => r.kind === 'relationship' },
+  { key: 'action', type: 'action \u00b7 primary', group: 'Calls to action', label: 'Calls to action',
+    blurb: 'what a person can do to it', cols: { card: false, example: false },
+    match: (r) => r.kind === 'action' },
+  { key: 'other', type: '', group: 'Annotations', label: 'Annotations',
+    blurb: 'rows with no type set', cols: { card: false, example: false },
+    match: (r) => r.kind === 'annotation' || r.kind === 'unknown' },
 ];
 
 /* All five tables share one grid, so they line up with or without a header. */
@@ -1127,7 +1488,7 @@ function renderGraph(stage) {
       const cls = 'nd' + (n.ghost ? ' ghost' : '') + (n.id === (g.focusId || S.selected) ? ' sel' : '');
       const label = n.name.length > 24 ? n.name.slice(0, 23) + '…' : n.name;
       const nsay = '<b>' + esc(n.name) + '</b>' + (n.ghost
-        ? ' — referenced here, defined in another file'
+        ? ' — no object of this name exists yet'
         : ' — click to open its card');
       svg += '<g class="' + cls + '" data-node="' + esc(n.id) + '" data-say="' + esc(nsay) + '">' +
         '<title>' + esc(n.name) + '</title>' +
@@ -1148,7 +1509,7 @@ function renderGraph(stage) {
       K('signed', '<svg width="26" height="12"><line class="sgn" x1="0" y1="6" x2="24" y2="6"/></svg>', 'signed off') +
       K('contested', '<svg width="26" height="12"><line class="ctd" x1="0" y1="6" x2="24" y2="6"/></svg>', 'the two sides disagree') +
       (ghosts ? G('Box') + K('ghost', '<span class="sw" style="border-style:dashed"></span>',
-        'defined in another file (' + ghosts + ')') : '');
+        'named, but no object exists (' + ghosts + ')') : '');
   }
 
   stage.innerHTML = '<div class="gbar">' +
@@ -1279,11 +1640,12 @@ function wireGraph(mode, hint) {
    original six-column layout. Both the colgroup and the header row have to agree
    with what renderStage actually emits per row, so they are built from the same
    flag rather than being constants. */
-const COLS = (ex) => `<colgroup><col style="width:22px"><col style="width:${ex ? 24 : 26}%">` +
-  `<col style="width:116px">${ex ? '<col style="width:150px">' : ''}<col>` +
+const COLS = (ex, card) => `<colgroup><col style="width:22px"><col style="width:${ex ? 24 : 26}%">` +
+  `${card ? '<col style="width:116px">' : ''}${ex ? '<col style="width:150px">' : ''}<col>` +
   `<col style="width:64px"><col style="width:22px"></colgroup>`;
-const THEAD = (ex) => `<thead><tr><th></th><th>Name</th><th>Cardinality</th>` +
-  `${ex ? '<th>Example</th>' : ''}<th>Note</th><th>Sign-off</th><th></th></tr></thead>`;
+const THEAD = (ex, card) => `<thead><tr><th></th><th>Name</th>` +
+  `${card ? '<th>Cardinality</th>' : ''}${ex ? '<th>Example</th>' : ''}` +
+  `<th>Note</th><th>Sign-off</th><th></th></tr></thead>`;
 
 /* The next row in the SAME section, or -1 at a section boundary — moving a
    row across a boundary would silently retype it. */
@@ -1316,19 +1678,21 @@ function doMove(obj, i, dir) {
 }
 
 function cardOptions(raw) {
-  const known = CARDINALITIES.some((c) => c.value === raw);
-  const base = CARDINALITIES.map((c) =>
-    `<option value="${esc(c.value)}" ${c.value === raw ? 'selected' : ''}>${esc(c.label)}</option>`).join('');
-  if (known) return base;
+  const menu = (sel) => CARDINALITIES.map((c) =>
+    `<option value="${esc(c.value)}" ${c.value === sel ? 'selected' : ''}>${esc(c.label)}</option>`).join('');
+  if (CARDINALITIES.some((c) => c.value === raw)) return menu(raw);
+
+  // A qualifier or a question mark does not make this a different KIND of
+  // cardinality, so it does not get a different menu — the chip under the row
+  // carries the qualifier and composeCardinality puts it back on save.
   const parsed = parseCardinality(raw);
-  if (['singular', '0-many', 'range'].includes(parsed.kind) && !parsed.qualifier && !parsed.uncertain) {
-    return CARDINALITIES.map((c) =>
-      `<option value="${esc(c.value)}" ${c.value === parsed.kind ? 'selected' : ''}>${esc(c.label)}</option>`).join('');
-  }
-  // A kept value like "0-many payees per contract" would otherwise set the
-  // intrinsic width of the whole column.
-  const label = esc(raw.replace(/\*\*/g, '').slice(0, 24)) || 'not asked';
-  return base + `<option value="${esc(raw)}" selected title="${esc(raw)}">${label} (kept)</option>`;
+  if (['singular', '0-many', '1-many', 'range'].includes(parsed.kind)) return menu(parsed.kind);
+
+  // Genuinely unreadable, e.g. free text somebody typed in Obsidian. Keep it
+  // verbatim rather than silently choosing on their behalf — but truncate the
+  // label, or one long value sets the width of the whole column.
+  const label = esc(raw.replace(/\*\*/g, '').trim().slice(0, 22)) || 'not asked';
+  return menu(null) + `<option value="${esc(raw)}" selected title="${esc(raw)}">${label} (kept)</option>`;
 }
 
 function renderCard(stage) {
@@ -1353,15 +1717,18 @@ function renderCard(stage) {
   let html = `<div class="cardnav">
     <button class="btn navbtn" id="prevObj" ${prev ? '' : 'disabled'} title="${prev ? 'Previous: ' + esc(prev.name) + ' (←)' : 'First object'}">&lsaquo;</button>
     <button class="btn navbtn" id="nextObj" ${next ? '' : 'disabled'} title="${next ? 'Next: ' + esc(next.name) + ' (→)' : 'Last object'}">&rsaquo;</button>
-    <input id="nameIn" value="${esc(obj.name)}" ${ro ? 'readonly' : ''} title="Object name">
+    <span class="navname">${esc(obj.name)}</span>
     <span class="pos">${idx + 1} of ${S.doc.objects.length}</span>
     <span class="spacer" style="flex:1"></span>
     <span class="prog">${st.signed} of ${st.total} signed</span>
     <div class="sigbar"><i style="width:${pct(st)}%"></i></div>
   </div>
   <article class="card">
-    <textarea class="ta" id="defEdit" ${ro ? 'readonly' : ''}
-      placeholder="No definition yet.">${esc(obj.definition ? obj.definition.text : '')}</textarea>`;
+    <div class="objhead">
+      <input id="nameIn" value="${esc(obj.name)}" ${ro ? 'readonly' : ''} title="Object name">
+      <textarea class="ta" id="defEdit" ${ro ? 'readonly' : ''}
+        placeholder="Say what this thing is, in one sentence.">${esc(obj.definition ? obj.definition.text : '')}</textarea>
+    </div>`;
 
   // The labelled notes are the most interview-useful prose on the card, so
   // they read before the rows rather than after them.
@@ -1373,8 +1740,9 @@ function renderCard(stage) {
     html += `<div class="notes">`;
     for (const n of obj.notes) {
       html += `<div class="nrow">` +
-        `<input class="nlbl" data-notelabel="${esc(n.label)}" value="${esc(n.label)}" ${ro ? 'readonly' : ''} title="Label">` +
-        `<textarea class="ta nbody" data-note="${esc(n.label)}" ${ro ? 'readonly' : ''}>${esc(n.body)}</textarea>` +
+        `<input class="nlbl" data-notelabel="${esc(n.label)}" value="${esc(n.label)}" ${ro ? 'readonly' : ''} title="What kind of note this is — click to change it">` +
+        `<span class="ncolon">:</span>` +
+        `<textarea class="ta nbody" data-note="${esc(n.label)}" ${ro ? 'readonly' : ''} placeholder="Write the note.">${esc(n.body)}</textarea>` +
         (ro ? '' : `<button class="rowbtn ndel" data-notedel="${esc(n.label)}" title="Delete this note">&times;</button>`) +
         `</div>`;
     }
@@ -1382,17 +1750,45 @@ function renderCard(stage) {
   }
   html += `</section>`;
 
-  let headed = false;
+  // Bucket the sections into their ORCA groups first, so a group that holds one
+  // kind can merge its two headings into one line instead of stacking a title
+  // on a title that says nearly the same word.
+  const groups = [];
   for (const sec of SECTIONS) {
     const list = rows.map((r, i) => ({ r, i })).filter(({ r }) => sec.match(r));
     if (!list.length && sec.key === 'other') continue;
-    html += `<section class="sec sec-${sec.key}"><div class="sec-h">${sec.label}` +
-      `<span class="ct">${list.length || ''}</span><span class="spacer" style="flex:1"></span>` +
-      (ro ? '' : `<button class="btn add" data-add="${sec.key}">+ row</button>`) + `</div>`;
+    const g = groups.find((x) => x.name === sec.group);
+    if (g) { g.secs.push({ sec, list }); g.count += list.length; }
+    else groups.push({ name: sec.group, secs: [{ sec, list }], count: list.length });
+  }
+
+  for (const g of groups) {
+    let headed = false;
+    const solo = g.secs.length === 1 ? g.secs[0].sec : null;
+    html += `<section class="grp"><div class="grp-h">` +
+      (solo ? `<span class="dot ${solo.key}"></span>` : '') +
+      `<span class="grp-t">${esc(g.name)}</span>` +
+      `<span class="grp-n">${g.count || ''}</span>` +
+      (solo ? `<span class="blurb">${esc(solo.blurb)}</span>` : '') +
+      (solo && !ro ? `<button class="btn add" data-add="${solo.key}">+ row</button>` : '') +
+      `</div>`;
+    for (const { sec, list } of g.secs) {
+      if (!solo) {
+        html += `<div class="sub"><div class="sub-h"><span class="dot ${sec.key}"></span>` +
+          `<span class="sub-t">${sec.label}</span>` +
+          `<span class="sub-n">${list.length || ''}</span>` +
+          `<span class="blurb">${esc(sec.blurb)}</span>` +
+          (ro ? '' : `<button class="btn add" data-add="${sec.key}">+ row</button>`) + `</div>`;
+      }
+      if (!list.length) html += `<p class="empty-sec">Nothing here yet.</p>`;
     if (list.length) {
-      const hasEx = C.example >= 0;
-      const thead = headed ? '' : (headed = true, THEAD(hasEx));
-      html += `<table class="rows">${COLS(hasEx)}${thead}<tbody>`;
+      // A column is shown when the section has a question for it, or when rows
+      // already carry a value — data is never hidden, only unasked-for prompts.
+      const hasCard = sec.cols.card || list.some(({ r }) => (r.cells[C.cardinality] || '').trim());
+      const hasEx = C.example >= 0 &&
+        (sec.cols.example || list.some(({ r }) => (r.cells[C.example] || '').trim()));
+      const thead = headed ? '' : (headed = true, THEAD(hasEx, hasCard));
+      html += `<table class="rows">${COLS(hasEx, hasCard)}${thead}<tbody>`;
       for (const { r, i } of list) {
         const signed = signable(r) && isSigned(r, col);
         const lock = signed || ro ? 'disabled' : '';
@@ -1403,11 +1799,11 @@ function renderCard(stage) {
           ${r.kind === 'relationship'
             ? `<td class="c-name rel">${targetChips(r, i, ro || signed)}</td>`
             : `<td class="c-name"><textarea class="cell nm" rows="1" data-row="${i}" data-col="${C.name}" ${lock}>${esc(r.cells[C.name])}</textarea></td>`}
-          <td>
-            <select class="cell card" data-row="${i}" data-card="1" ${lock}>${cardOptions(r.cells[C.cardinality])}</select>
+          ${hasCard ? `<td>
+            <select class="cell card${(r.cells[C.cardinality] || '').trim() ? '' : ' unset'}" data-row="${i}" data-card="1" ${lock}>${cardOptions(r.cells[C.cardinality])}</select>
             ${r.cardinality.qualifier ? `<div class="qualchip">${esc(r.cardinality.qualifier)}</div>` : ''}
-          </td>
-          ${C.example >= 0 ? `<td><textarea class="cell example" rows="1" data-row="${i}" data-col="${C.example}" ${lock} placeholder="—">${esc(r.cells[C.example] || '')}</textarea></td>` : ''}
+          </td>` : ''}
+          ${hasEx ? `<td><textarea class="cell example" rows="1" data-row="${i}" data-col="${C.example}" ${lock}>${esc(r.cells[C.example] || '')}</textarea></td>` : ''}
           <td><textarea class="cell note" rows="1" data-row="${i}" data-col="${C.note}" ${lock}>${esc(r.cells[C.note])}</textarea></td>
           <td class="g-sign">${signable(r) ? `<button class="lockbtn ${signed ? 'on' : ''}" data-lock="${i}" aria-pressed="${signed}" ${ro ? 'disabled' : ''} title="${signed ? 'Signed ' + esc((r.cells[col] || '').replace(/^signed /, '')) + ' — click to unlock' : 'Sign off on this row'}">&#10003;</button>` : ''}</td>
           <td class="g-del">${ro ? '' : `<button class="rowbtn" data-del="${i}" title="Delete row" ${signed ? 'disabled' : ''}>&times;</button>`}</td>
@@ -1415,19 +1811,24 @@ function renderCard(stage) {
       }
       html += '</tbody></table>';
     }
+      if (!solo) html += `</div>`;
+    }
     html += `</section>`;
   }
 
   const back = backlinks(S.doc, obj.id);
   if (back.length) {
-    html += `<section class="sec"><div class="sec-h">Referenced by<span class="ct">${back.length}</span></div>`;
+    html += `<section class="sec"><div class="sec-h">Referenced by<span class="ct">${back.length}</span></div>` +
+      `<div class="backlinks">` +
+      `<div class="bh">Object</div><div class="bh">Cardinality</div><div class="bh">Why</div>`;
     for (const b of back) {
-      html += `<div class="backlink">
-        <button data-goto="${esc(b.from.id)}">${esc(b.from.name)}</button>
-        <span class="c">${esc(b.row.cardinality.raw.replace(/\*\*/g, ''))}</span>
-        <span class="c">${esc(b.row.cells[b.row.cols ? b.row.cols.note : 4] || '')}</span></div>`;
+      const card = b.row.cardinality.raw.replace(/\*\*/g, '').trim();
+      const why = (b.row.cells[b.row.cols ? b.row.cols.note : 4] || '').replace(/\*\*/g, '').trim();
+      html += `<div class="bc from"><button data-goto="${esc(b.from.id)}">${esc(b.from.name)}</button></div>` +
+        `<div class="bc card${card ? '' : ' blank'}">${esc(card || 'not asked')}</div>` +
+        `<div class="bc note${why ? '' : ' blank'}">${esc(why || 'no note')}</div>`;
     }
-    html += `</section>`;
+    html += `</div></section>`;
   }
 
   html += `<div class="cardfoot">
@@ -1441,6 +1842,27 @@ function renderCard(stage) {
 }
 
 /**
+ * Every target whose object now exists becomes a real link, whatever syntax it
+ * arrived in. Run after creating an object, so a row stops being a loose end in
+ * the FILE and not just on the screen — otherwise the chip goes solid while the
+ * markdown still says `**Name**`.
+ */
+function relink(doc) {
+  const have = new Set(doc.objects.map((o) => o.id));
+  let changed = 0;
+  for (const o of doc.objects) {
+    for (const r of (o.table ? o.table.rows : [])) {
+      if (!r.targets || !r.targets.length) continue;
+      if (!r.targets.some((t) => t.scope !== 'internal' && have.has(slug(t.name)))) continue;
+      setRowTargets(r, r.targets.map((t) =>
+        (have.has(slug(t.name)) ? { ...t, scope: 'internal' } : t)), r.label);
+      changed++;
+    }
+  }
+  return changed;
+}
+
+/**
  * A relationship cell IS its chips — the `[[#Name]]` and `**Name**` syntax is
  * never shown and never typed. The chip label navigates, × removes, + adds.
  */
@@ -1449,10 +1871,13 @@ function targetChips(row, i, locked) {
   row.targets.forEach((t, k) => {
     const id = slug(t.name);
     const live = S.doc.objects.some((o) => o.id === id);
-    html += `<span class="chip ${live ? '' : 'ghost'}" title="${live ? 'Go to ' + esc(t.name) : esc(t.name) + ' — not an object in this file'}">` +
+    html += `<span class="chip ${live ? '' : 'ghost'}" title="${live
+        ? 'Go to ' + esc(t.name)
+        : 'There is no object called ' + esc(t.name) + ' — click to create it'}">` +
       (live
         ? `<button class="tlbl" data-goto="${esc(id)}">${esc(t.name)}</button>`
-        : `<span class="tlbl">${esc(t.name)}</span>`) +
+        : `<button class="tlbl" data-makeobj="${esc(t.name)}">${esc(t.name)}</button>` +
+          `<span class="ext">no object</span>`) +
       (locked ? '' : `<button class="chipx" data-untarget="${i}" data-k="${k}" title="Remove">&times;</button>`) +
       `</span>`;
   });
@@ -1469,6 +1894,24 @@ function wireCard(obj, col, prev, next, C) {
   if (N && next) N.onclick = () => goTo(next.id);
   stage.querySelectorAll('[data-goto]').forEach((el) => (el.onclick = () => goTo(el.dataset.goto)));
   if (S.readOnly) return;
+
+  // Close a loose end: make the object the row already claims to point at.
+  stage.querySelectorAll('[data-makeobj]').forEach((el) => {
+    el.onclick = async () => {
+      const name = el.dataset.makeobj;
+      const go = await ask({
+        title: `Create \u201C${name}\u201D?`,
+        body: `A row points at <b>${esc(name)}</b>, but no object of that name exists ` +
+          `in this file. Creating it links every row that names it.`,
+        ok: 'Create it',
+      });
+      if (!go) return;
+      addObject(S.doc, name);
+      relink(S.doc);
+      markDirty();
+      keepPlace(() => { renderStage(); renderRail(); });
+    };
+  });
 
   const nameIn = $('nameIn');
   nameIn.onchange = () => {
@@ -1517,23 +1960,26 @@ function wireCard(obj, col, prev, next, C) {
   });
 
   stage.querySelectorAll('[data-notedel]').forEach((el) => {
-    el.onclick = () => {
-      if (!confirm('Delete this note?')) return;
+    el.onclick = async () => {
+      if (!(await ask({ title: 'Delete this note?', ok: 'Delete', danger: true }))) return;
       removeNote(obj, el.dataset.notedel);
       markDirty();
       keepPlace(() => renderStage());
     };
   });
 
+  // `setNote` with an empty body DELETES — which is why this used to do nothing
+  // whatsoever. A new note is created outright, and the cursor lands in the
+  // BODY: the label is a word you can change, not a title you must supply.
   const addNote = $('addNote');
   if (addNote) addNote.onclick = () => {
     let label = 'Note', i = 2;
     while (obj.notes.some((n) => n.label === label)) label = 'Note ' + i++;
-    setNote(obj, label, ' ');
+    createNote(obj, label);
     markDirty();
-    renderStage();
-    const fresh = $('stage').querySelector(`input[data-notelabel="${label}"]`);
-    if (fresh) { fresh.focus(); fresh.select(); }
+    keepPlace(() => renderStage());
+    const fresh = $('stage').querySelector(`textarea[data-note="${label}"]`);
+    if (fresh) { fresh.focus(); fresh.scrollIntoView({ block: 'nearest' }); }
   };
 
   // Text edits never re-render — that is what keeps focus and scroll.
@@ -1589,7 +2035,11 @@ function wireCard(obj, col, prev, next, C) {
       el.replaceWith(inp);
       inp.focus();
       let done = false;
-      const commit = (ok) => {
+      // A relationship can only point at an object that EXISTS. Typing a name
+      // that does not offers to make it; it no longer quietly banks the name as
+      // a reference to nothing, which produced rows that looked identical to
+      // real ones and turned out to point nowhere.
+      const commit = async (ok) => {
         if (done) return; done = true;
         const v = ok ? oneLine(inp.value).replace(/^\[\[#|\]\]$/g, '').replace(/^\*\*|\*\*$/g, '').trim() : '';
         if (!v) { keepPlace(() => renderStage()); return; }
@@ -1598,13 +2048,19 @@ function wireCard(obj, col, prev, next, C) {
           banner('warn', `<b>${esc(v)}</b> is already on that row.`);
           keepPlace(() => renderStage()); return;
         }
-        let scope = 'internal';
         if (!S.doc.objects.some((o) => o.id === slug(v))) {
-          scope = confirm(`There is no object called "${v}" in this file.\n\nOK = create it now.\nCancel = keep it as a reference to something outside this file.`)
-            ? (addObject(S.doc, v), 'internal')
-            : 'external';
+          const make = await ask({
+            title: `Create \u201C${v}\u201D?`,
+            body: `There is no object called <b>${esc(v)}</b> in this file yet. ` +
+              `A relationship has to point at an object that exists, so this adds one \u2014 ` +
+              `empty, at the end of the file, ready for a definition.`,
+            ok: 'Create it',
+          });
+          if (!make) { keepPlace(() => renderStage()); return; }
+          addObject(S.doc, v);
+          relink(S.doc);
         }
-        setRowTargets(row, [...row.targets, { name: v, scope }], row.label);
+        setRowTargets(row, [...row.targets, { name: v, scope: 'internal' }], row.label);
         markDirty();
         keepPlace(() => { renderStage(); renderRail(); });
       };
@@ -1618,11 +2074,17 @@ function wireCard(obj, col, prev, next, C) {
 
   // Sign-off mutates the row in place; a full re-render would blank the card.
   stage.querySelectorAll('[data-lock]').forEach((el) => {
-    el.onclick = () => {
+    el.onclick = async () => {
       const i = +el.dataset.lock, row = obj.table.rows[i];
       let c = signOffCol(obj.table);
       if (c < 0) {
-        if (!confirm('This file has no Sign-off column yet.\n\nAdding one rewrites this table once. Every edit after that is a one-line change again.\n\nAdd it?')) return;
+        const go = await ask({
+          title: 'Add a Sign-off column?',
+          body: 'This file has no Sign-off column yet. Adding one rewrites this table ' +
+            'once. Every edit after that is a one-line change again.',
+          ok: 'Add it',
+        });
+        if (!go) return;
         c = addSignOffColumn(obj.table);
         signRow(row, c, today());
         markDirty();
@@ -1630,7 +2092,12 @@ function wireCard(obj, col, prev, next, C) {
         return;
       }
       if (isSigned(row, c)) {
-        if (!confirm('Unlock this row so it can be edited again?')) return;
+        const go = await ask({
+          title: 'Unlock this row?',
+          body: 'It goes back to being editable, and stops counting as agreed.',
+          ok: 'Unlock',
+        });
+        if (!go) return;
         unsignRow(row, c);
       } else signRow(row, c, today());
 
@@ -1650,8 +2117,8 @@ function wireCard(obj, col, prev, next, C) {
   });
 
   stage.querySelectorAll('[data-del]').forEach((el) => {
-    el.onclick = () => {
-      if (!confirm('Delete this row?')) return;
+    el.onclick = async () => {
+      if (!(await ask({ title: 'Delete this row?', ok: 'Delete', danger: true }))) return;
       const i = +el.dataset.del;
       obj.table.rows.splice(i, 1);
       markDirty();
@@ -1666,8 +2133,14 @@ function wireCard(obj, col, prev, next, C) {
     el.onclick = () => addRow(obj, SECTIONS.find((sc) => sc.key === el.dataset.add).type, C);
   });
 
-  $('delObj').onclick = () => {
-    if (!confirm(`Delete the object "${obj.name}"?\n\nThis removes it from the file when you save.`)) return;
+  $('delObj').onclick = async () => {
+    const go = await ask({
+      title: `Delete \u201C${obj.name}\u201D?`,
+      body: 'It leaves the file the next time you save. Rows on other objects that ' +
+        'point at it stay where they are.',
+      ok: 'Delete', danger: true,
+    });
+    if (!go) return;
     const i = S.doc.objects.indexOf(obj);
     removeObject(S.doc, obj.id);
     const nextSel = S.doc.objects[Math.max(0, i - 1)];
@@ -1708,8 +2181,8 @@ function addRow(obj, type, C) {
   if (inp) { inp.focus(); inp.scrollIntoView({ block: 'nearest' }); }
 }
 
-function doAddObject() {
-  const name = prompt('New object name');
+async function doAddObject() {
+  const name = await ask({ title: 'New object', value: '', placeholder: 'Book, Author, Branch\u2026', ok: 'Add' });
   if (!name || !name.trim()) return;
   if (S.doc.objects.some((o) => o.id === slug(name.trim()))) {
     banner('err', 'An object with that name already exists in this file.');
@@ -1751,7 +2224,7 @@ async function openFolder() {
 async function loadFolder() {
   clearBanners();
   S.files = await fs.listMarkdown(S.dir);
-  $('fileName').textContent = S.dir.name;
+  $('fileNameLabel').textContent = S.dir.name;
   $('fileName').title = S.dir.name;
   // Probe each file once so the rail can hide the ones that are not object maps.
   for (const f of S.files) {
@@ -1776,7 +2249,10 @@ async function loadFolder() {
 /** Create a new object-map file in the open folder and open it. */
 async function newMap() {
   if (!S.dir) { banner('warn', 'Open a folder first.'); return; }
-  const title = prompt('Name for the new object map', 'Object Map');
+  const title = await ask({
+    title: 'New object map', body: 'It is created in the folder you have open.',
+    value: 'Object Map', ok: 'Create',
+  });
   if (!title || !title.trim()) return;
   const clean = title.trim().replace(/\.md$/i, '');
   const filename = clean + '.md';
@@ -1801,7 +2277,13 @@ async function newMap() {
 }
 
 async function openFile(f) {
-  if (S.dirty && !confirm('Unsaved changes will be lost. Continue?')) return;
+  if (S.dirty) {
+    const go = await ask({
+      title: 'Unsaved changes', body: 'Opening another file discards them.',
+      ok: 'Discard and open', cancel: 'Stay here', danger: true,
+    });
+    if (!go) return;
+  }
   clearBanners();
   const text = await fs.read(f.handle);
   const r = verifyRoundTrip(text);
@@ -1809,7 +2291,7 @@ async function openFile(f) {
   S.dirty = false; S.readOnly = !r.ok;
   S.selected = S.doc.objects.length ? S.doc.objects[0].id : null;
   S.scroll = { map: 0, card: 0, source: 0 };
-  $('fileName').textContent = f.name;
+  $('fileNameLabel').textContent = f.name;
   $('fileName').title = f.name;
 
   if (!r.ok) {
@@ -1833,9 +2315,13 @@ async function save() {
     }
     const onDisk = await fs.read(S.file.handle);
     if (onDisk !== S.originalText) {
-      if (!confirm('This file changed on disk since you opened it (Obsidian?).\n\nOK = overwrite with your version.\nCancel = discard yours and reload from disk.')) {
-        S.dirty = false; await openFile(S.file); return;
-      }
+      const go = await ask({
+        title: 'This file changed on disk',
+        body: 'Something else wrote to it since you opened it \u2014 Obsidian, most likely. ' +
+          'Overwriting replaces that version with yours.',
+        ok: 'Overwrite', cancel: 'Discard mine and reload', danger: true,
+      });
+      if (!go) { S.dirty = false; await openFile(S.file); return; }
     }
     const text = serializeDocument(S.doc);
     await backup(S.file.name, S.originalText);
@@ -1886,6 +2372,12 @@ document.querySelectorAll('#viewSeg button').forEach((b) => (b.onclick = () => {
   $('stage').scrollTop = S.scroll[S.view] || 0;
 }));
 $('modeBtn').onclick = () => { S.mode = S.mode === 'confidence' ? 'normal' : 'confidence'; syncSegs(); };
+$('capDone').onclick = () => setCapture(false);
+$('capScrim').onmousedown = (e) => { if (e.target === $('capScrim')) setCapture(false); };
+$('capName').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); doCapture(); }
+  if (e.key === 'Escape') { e.preventDefault(); setCapture(false); }
+});
 
 /* Enter commits a cell instead of inserting a newline into a table row. */
 $('stage').addEventListener('keydown', (e) => {
@@ -1905,10 +2397,13 @@ $('stage').addEventListener('keydown', (e) => {
 });
 
 document.addEventListener('keydown', (e) => {
+  if (dialogsOpen) return;
   if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); commitActive(); save(); return; }
   if (e.key === 'Escape' && S.present) { S.present = false; syncSegs(); renderStage(); return; }
+  if (e.key === 'Escape' && S.capture) { setCapture(false); return; }
   const typing = /^(INPUT|TEXTAREA|SELECT)$/.test((e.target.tagName || '')) || e.target.isContentEditable;
   if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.key === 'c' || e.key === 'C') { e.preventDefault(); setCapture(!S.capture); return; }
   if (!S.doc || !S.doc.objects.length) return;
   // Source is a check on what will be written, not a peer of the two real views.
   if (e.key === 's' || e.key === 'S') {

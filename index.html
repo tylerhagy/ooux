@@ -54,6 +54,9 @@
   }
 }
 * { box-sizing: border-box; }
+/* `.btn`/`.seg` set their own `display`, which otherwise outranks the
+   browser's default `[hidden]` rule at equal specificity. */
+[hidden] { display: none !important; }
 html, body { height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--ink);
   font: var(--t-ui)/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
@@ -103,6 +106,9 @@ header { display: flex; align-items: center; gap: var(--s3); flex-wrap: nowrap;
 .file svg { color: var(--faint); flex: none; }
 .file:hover svg { color: var(--ink); }
 .file:hover { background: var(--btn-face-hover); color: var(--ink); }
+.file:disabled { cursor: not-allowed; opacity: .5; }
+.file:disabled:hover { background: none; color: var(--dim); }
+.file:disabled:hover svg { color: var(--faint); }
 .status { flex: none; width: 118px; font-size: var(--t-small); color: var(--dim); }
 .status.dirty { color: var(--warn); font-weight: 600; }
 .spacer { flex: 1; }
@@ -325,10 +331,11 @@ tr.signed .cell { color: var(--dim); }
 .lockbtn.on, .lockbtn.on:hover { background: var(--ok); border-color: var(--ok);
   color: var(--on-ok); }
 .lockbtn:disabled { opacity: 1; cursor: default; }
-.movebtn { display: block; width: 22px; height: 14px; padding: 0; border: 0; background: none;
-  color: var(--faint); font-size: 10px; line-height: 14px; text-align: center; border-radius: 3px; }
+.movebtn { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 14px;
+  padding: 0; border: 0; background: none; color: var(--faint); border-radius: 3px; }
 .movebtn:hover:not(:disabled) { background: var(--accent-soft); color: var(--accent); }
-.rowbtn { border: 0; background: none; color: var(--faint); padding: 2px 5px; border-radius: 4px; }
+.rowbtn { display: inline-flex; align-items: center; justify-content: center;
+  border: 0; background: none; color: var(--faint); padding: 2px 5px; border-radius: 4px; }
 .rowbtn:hover:not(:disabled) { background: var(--danger-soft); color: var(--danger); }
 .movebtn, .rowbtn { opacity: 0; transition: opacity 90ms; }
 tr:hover .movebtn, tr:hover .rowbtn, tr:focus-within .movebtn, tr:focus-within .rowbtn,
@@ -359,8 +366,8 @@ td.c-name.rel { flex-wrap: wrap; }
   color: var(--warn); padding: 0 2px 0 5px; }
 .chip .tlbl { border: 0; background: none; color: inherit; padding: 0; font-size: inherit; }
 .chip .tlbl:hover { text-decoration: underline; }
-.chipx { border: 0; background: none; color: inherit; padding: 0 4px; border-radius: 999px;
-  opacity: 0; font-size: inherit; }
+.chipx { display: inline-flex; align-items: center; justify-content: center;
+  border: 0; background: none; color: inherit; padding: 0 4px; border-radius: 999px; opacity: 0; }
 tr:hover .chipx, tr:focus-within .chipx, .chipx:focus-visible { opacity: .6; }
 .chipx:hover { opacity: 1; background: var(--danger-soft); color: var(--danger); }
 .addtarget { width: 20px; height: 18px; padding: 0; border: 1px dashed var(--btn-line);
@@ -420,7 +427,7 @@ tr:hover .chipx, tr:focus-within .chipx, .chipx:focus-visible { opacity: .6; }
 @keyframes scrimin { from { opacity: 0 } to { opacity: 1 } }
 .dlg { width: min(430px, 100%); background: var(--panel); border: 1px solid var(--line);
   border-radius: var(--radius); padding: var(--s5);
-  box-shadow: 0 16px 48px rgba(0,0,0,.24), 0 2px 8px rgba(0,0,0,.12);
+  box-shadow: var(--shadow-sm);
   animation: dlgin 130ms cubic-bezier(.22,.61,.36,1); }
 @keyframes dlgin { from { opacity: 0; transform: translateY(6px) scale(.985) } to { opacity: 1 } }
 .dlg h2 { margin: 0 0 var(--s2); font-size: var(--t-title); font-weight: 600; letter-spacing: -.01em; }
@@ -588,6 +595,12 @@ body[data-present=true] .grp-h, body[data-present=true] .sec .sec-h { top: 56px;
 .exit-present { display: none; position: fixed; top: 14px; right: var(--s4); z-index: 30; }
 body[data-present=true] .exit-present { display: block; }
 
+/* Present is a clean, read-only look at content — none of the ways to edit
+   it should still be sitting on the card. */
+body[data-present=true] :is(.btn.add, .addtarget, .lockbtn:not(.on), select.cell.card.unset) {
+  display: none;
+}
+
 .welcome { max-width: 620px; margin: 8vh auto; text-align: center; }
 .welcome h1 { font-size: var(--t-display); margin-bottom: 6px; }
 .welcome p { color: var(--dim); }
@@ -604,14 +617,14 @@ body[data-present=true] .exit-present { display: block; }
   <span class="status" id="status"></span>
   <span class="spacer"></span>
   <span class="headline" id="headline"></span>
-  <button class="btn sm" id="modeBtn" aria-pressed="false" title="Dim everything not signed off">Signed off</button>
-  <div class="seg" id="viewSeg">
+  <button class="btn sm" id="modeBtn" aria-pressed="false" title="Dim everything not signed off" hidden>Signed off</button>
+  <div class="seg" id="viewSeg" hidden>
     <button data-view="map" aria-pressed="true">Map</button>
     <button data-view="graph" aria-pressed="false">Graph</button>
   </div>
-  <button class="btn" id="presentBtn">Present</button>
+  <button class="btn" id="presentBtn" hidden>Present</button>
 
-  <button class="btn primary" id="saveBtn" disabled>Save</button>
+  <button class="btn primary" id="saveBtn" disabled hidden>Save</button>
 </header>
 
 <div id="banners"></div>
@@ -731,6 +744,20 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const today = () => new Date().toISOString().slice(0, 10);
 
+/* One glyph set across jobmap, priority-guide and ORCA — same viewBox, same
+   stroke weight, same call. Copied rather than shared because these apps have
+   no build step and each is a single file you can open anywhere. */
+const GLYPH = {
+  x: 'M4 4l8 8M12 4l-8 8',
+  plus: 'M8 3.5v9M3.5 8h9',
+  up: 'M8 12.5v-9M4 7.5L8 3.5l4 4',
+  down: 'M8 3.5v9M4 8.5l4 4 4-4',
+  tick: 'M3 8.4l3.2 3.1L13 4.8',
+};
+function icon(name, size = 13) {
+  return `<svg viewBox="0 0 16 16" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="${GLYPH[name]}"/></svg>`;
+}
+
 /* A cell is one line of a markdown table row, so a newline or a bare pipe
    corrupts the file. Sanitise at the commit point, never at render. */
 const oneLine = (s) => String(s).replace(/\r?\n+/g, ' ').replace(/\s{2,}/g, ' ').trim();
@@ -771,8 +798,11 @@ function commitActive() {
 function banner(kind, html, sticky) {
   const d = document.createElement('div');
   d.className = 'banner ' + kind;
-  d.innerHTML = html + '<button class="x" title="Dismiss">×</button>';
+  d.innerHTML = html + `<button class="x" title="Dismiss">${icon('x', 12)}</button>`;
   d.querySelector('.x').onclick = () => d.remove();
+  // Present is a clean look at content for a shared screen — a toast sitting
+  // over the card would be noise nobody in the room can dismiss.
+  if (!sticky && S.present) return d;
   (sticky ? $('banners') : $('toasts')).appendChild(d);
   if (!sticky) setTimeout(() => d.remove(), 5000);
   return d;
@@ -1743,7 +1773,7 @@ function renderCard(stage) {
         `<input class="nlbl" data-notelabel="${esc(n.label)}" value="${esc(n.label)}" ${ro ? 'readonly' : ''} title="What kind of note this is — click to change it">` +
         `<span class="ncolon">:</span>` +
         `<textarea class="ta nbody" data-note="${esc(n.label)}" ${ro ? 'readonly' : ''} placeholder="Write the note.">${esc(n.body)}</textarea>` +
-        (ro ? '' : `<button class="rowbtn ndel" data-notedel="${esc(n.label)}" title="Delete this note">&times;</button>`) +
+        (ro ? '' : `<button class="rowbtn ndel" data-notedel="${esc(n.label)}" title="Delete this note">${icon('x', 12)}</button>`) +
         `</div>`;
     }
     html += `</div>`;
@@ -1795,7 +1825,7 @@ function renderCard(stage) {
         const up = sectionNeighbour(obj.table, i, -1) < 0 ? 'disabled' : '';
         const dn = sectionNeighbour(obj.table, i, 1) < 0 ? 'disabled' : '';
         html += `<tr data-idx="${i}" class="${signed ? 'signed' : ''} ${r.dirty ? 'rowdirty' : ''}">
-          <td class="g-move">${ro ? '' : `<button class="movebtn" data-move="${i}" data-dir="-1" title="Move up (Alt+↑)" ${up}>&uarr;</button><button class="movebtn" data-move="${i}" data-dir="1" title="Move down (Alt+↓)" ${dn}>&darr;</button>`}</td>
+          <td class="g-move">${ro ? '' : `<button class="movebtn" data-move="${i}" data-dir="-1" title="Move up (Alt+↑)" ${up}>${icon('up', 11)}</button><button class="movebtn" data-move="${i}" data-dir="1" title="Move down (Alt+↓)" ${dn}>${icon('down', 11)}</button>`}</td>
           ${r.kind === 'relationship'
             ? `<td class="c-name rel">${targetChips(r, i, ro || signed)}</td>`
             : `<td class="c-name"><textarea class="cell nm" rows="1" data-row="${i}" data-col="${C.name}" ${lock}>${esc(r.cells[C.name])}</textarea></td>`}
@@ -1805,8 +1835,8 @@ function renderCard(stage) {
           </td>` : ''}
           ${hasEx ? `<td><textarea class="cell example" rows="1" data-row="${i}" data-col="${C.example}" ${lock}>${esc(r.cells[C.example] || '')}</textarea></td>` : ''}
           <td><textarea class="cell note" rows="1" data-row="${i}" data-col="${C.note}" ${lock}>${esc(r.cells[C.note])}</textarea></td>
-          <td class="g-sign">${signable(r) ? `<button class="lockbtn ${signed ? 'on' : ''}" data-lock="${i}" aria-pressed="${signed}" ${ro ? 'disabled' : ''} title="${signed ? 'Signed ' + esc((r.cells[col] || '').replace(/^signed /, '')) + ' — click to unlock' : 'Sign off on this row'}">&#10003;</button>` : ''}</td>
-          <td class="g-del">${ro ? '' : `<button class="rowbtn" data-del="${i}" title="Delete row" ${signed ? 'disabled' : ''}>&times;</button>`}</td>
+          <td class="g-sign">${signable(r) ? `<button class="lockbtn ${signed ? 'on' : ''}" data-lock="${i}" aria-pressed="${signed}" ${ro ? 'disabled' : ''} title="${signed ? 'Signed ' + esc((r.cells[col] || '').replace(/^signed /, '')) + ' — click to unlock' : 'Sign off on this row'}">${icon('tick', 12)}</button>` : ''}</td>
+          <td class="g-del">${ro ? '' : `<button class="rowbtn" data-del="${i}" title="Delete row" ${signed ? 'disabled' : ''}>${icon('x', 12)}</button>`}</td>
         </tr>`;
       }
       html += '</tbody></table>';
@@ -1878,11 +1908,11 @@ function targetChips(row, i, locked) {
         ? `<button class="tlbl" data-goto="${esc(id)}">${esc(t.name)}</button>`
         : `<button class="tlbl" data-makeobj="${esc(t.name)}">${esc(t.name)}</button>` +
           `<span class="ext">no object</span>`) +
-      (locked ? '' : `<button class="chipx" data-untarget="${i}" data-k="${k}" title="Remove">&times;</button>`) +
+      (locked ? '' : `<button class="chipx" data-untarget="${i}" data-k="${k}" title="Remove">${icon('x', 10)}</button>`) +
       `</span>`;
   });
   if (row.label) html += `<span class="lbltext">${esc(row.label)}</span>`;
-  if (!locked) html += `<button class="addtarget" data-addtarget="${i}" title="Add a related object">+</button>`;
+  if (!locked) html += `<button class="addtarget" data-addtarget="${i}" title="Add a related object">${icon('plus', 12)}</button>`;
   html += '</div>';
   return html;
 }
@@ -2345,6 +2375,11 @@ async function save() {
    chrome wiring
    =========================================================================== */
 function syncSegs() {
+  // Before a map is open there is nothing to view, sign off on or save — so
+  // none of that chrome exists yet. Just the brand and the Open-folder
+  // control, matching jobmap and priority-guide's minimal-until-loaded header.
+  $('modeBtn').hidden = $('viewSeg').hidden = $('presentBtn').hidden = $('saveBtn').hidden = !S.doc;
+
   // A card is the detail of a Map object and Source is a check on the Map, so
   // both keep Map lit rather than leaving no view selected.
   // The rail is the only way to move between objects in Card and Graph. On the

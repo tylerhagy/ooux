@@ -81,10 +81,25 @@ await page.addInitScript((text) => {
 
 await page.goto(`http://localhost:${PORT}/index.html`);
 await page.waitForSelector('#stage');
+
+// ---------------------------------------------------------------- pre-load header chrome
+ok('before a folder is open, only the brand and Open-folder control show',
+  await page.locator('#modeBtn').isHidden()
+  && await page.locator('#viewSeg').isHidden()
+  && await page.locator('#presentBtn').isHidden()
+  && await page.locator('#saveBtn').isHidden()
+  && await page.locator('#fileName').isVisible());
+
 await page.click('#fileName');
 await page.waitForSelector('.mini', { timeout: 8000 });
 await page.click('.mini[data-id="book"]');
 await page.waitForSelector('.card', { timeout: 8000 });
+
+ok('once a map is open, the rest of the header chrome appears',
+  await page.locator('#modeBtn').isVisible()
+  && await page.locator('#viewSeg').isVisible()
+  && await page.locator('#presentBtn').isVisible()
+  && await page.locator('#saveBtn').isVisible());
 
 const written = () => page.evaluate(() => window.__written || null);
 const current = () => page.evaluate(() => window.__store['library.md']);
@@ -98,6 +113,8 @@ const key = (k, opts = {}) => page.evaluate(({ k, opts }) => {
   (document.activeElement || document).dispatchEvent(
     new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true, ...opts }));
 }, { k, opts });
+const visibleCount = (sel) => page.evaluate((s) =>
+  Array.from(document.querySelectorAll(s)).filter((el) => getComputedStyle(el).display !== 'none').length, sel);
 
 // ---------------------------------------------------------------- opening
 ok('the fixture folder opens without a read-only banner', (await page.$('.banner.err')) === null);
@@ -106,10 +123,34 @@ eq('opening Book from the rail loads its card', await page.locator('#nameIn').in
 
 // ---------------------------------------------------------------- present mode: button
 ok('present mode starts off', !(await isPresent()));
+ok('editing affordances are visible before presenting',
+  (await visibleCount('.btn.add')) > 0
+  && (await visibleCount('.addtarget')) > 0
+  && (await visibleCount('.lockbtn:not(.on)')) > 0);
 await page.click('#presentBtn');
 await page.waitForTimeout(150);
 ok('clicking Present turns it on', await isPresent());
 ok('the header and rail hide', !(await page.locator('header').isVisible()));
+ok('present hides the +row/+note links, the add-target +, and empty sign-off checkboxes',
+  (await visibleCount('.btn.add')) === 0
+  && (await visibleCount('.addtarget')) === 0
+  && (await visibleCount('.lockbtn:not(.on)')) === 0);
+
+// A toast fired while presenting should not land on screen at all. Renaming
+// Book rewrites Author's [[#Book]] reference back to it and fires a real,
+// non-sticky "Renamed. Rewrote..." toast — a genuine trigger, not a stand-in.
+await page.fill('#nameIn', 'Book Two');
+await page.locator('#nameIn').blur();
+await page.waitForTimeout(150);
+ok('a toast raised while presenting does not render over the card',
+  (await page.locator('#toasts .banner').count()) === 0);
+
+// Restore the name so the rest of the suite still finds "Book".
+await page.fill('#nameIn', 'Book');
+await page.locator('#nameIn').blur();
+await page.waitForTimeout(150);
+eq('the name is back to Book', await page.locator('#nameIn').inputValue(), 'Book');
+
 await page.click('#exitPresent');
 await page.waitForTimeout(150);
 ok('clicking Exit present turns it back off', !(await isPresent()));

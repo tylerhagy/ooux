@@ -215,6 +215,33 @@ await page.waitForTimeout(150);
 await confirmIfAsked(); // unlocking a signed row asks for confirmation too
 eq('and can be undone', await lock.getAttribute('aria-pressed'), 'false');
 
+// ---------------------------------------------------------------- S toggles Source and back
+await page.locator('.rail-row', { hasText: 'Book' }).locator('.rail-item').click();
+await page.waitForTimeout(150);
+eq('starting back on the Book card', await page.locator('#nameIn').inputValue(), 'Book');
+
+await key('s');
+await page.waitForTimeout(150);
+ok('S from a Card opens Source', await page.locator('.ln').count() > 0);
+
+await key('s');
+await page.waitForTimeout(150);
+ok('S again returns to the same Card, not Map', await page.locator('#nameIn').isVisible());
+eq('and it is still the Book card', await page.locator('#nameIn').inputValue(), 'Book');
+
+await page.locator('#viewSeg button[data-view="map"]').click();
+await page.waitForTimeout(150);
+ok('switching to Map shows the map cards', await page.locator('.mini').count() > 0);
+
+await key('s');
+await page.waitForTimeout(150);
+ok('S from Map opens Source', await page.locator('.ln').count() > 0);
+
+await key('s');
+await page.waitForTimeout(150);
+ok('S again returns to Map, unchanged from before', await page.locator('.mini').count() > 0);
+ok('and not to a Card', await page.locator('#nameIn').count() === 0);
+
 // ---------------------------------------------------------------- save round-trips
 await save();
 const w = await written();

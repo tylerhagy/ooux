@@ -722,7 +722,7 @@ async function backup(name, text) {
    =========================================================================== */
 const S = {
   dir: null, files: [], file: null, doc: null, originalText: '',
-  readOnly: false, view: 'map', mapView: 'cards', mode: 'normal', present: false,
+  readOnly: false, view: 'map', viewBeforeSource: 'map', mapView: 'cards', mode: 'normal', present: false,
   selected: null, dirty: false, onlyMaps: true, capture: false, captured: 0,
   scroll: { map: 0, card: 0, source: 0, graph: 0 },
   graph: { focus: '', depth: 1, vb: null },
@@ -2412,7 +2412,12 @@ document.addEventListener('keydown', (e) => {
   // Source is a check on what will be written, not a peer of the two real views.
   if (e.key === 's' || e.key === 'S') {
     e.preventDefault();
-    S.view = S.view === 'source' ? 'map' : 'source';
+    if (S.view === 'source') {
+      S.view = S.viewBeforeSource || 'map';
+    } else {
+      S.viewBeforeSource = S.view;
+      S.view = 'source';
+    }
     syncSegs(); renderStage(); renderRail();
     return;
   }

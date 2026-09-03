@@ -10,7 +10,7 @@ import {
   parseDocument, serializeDocument, verifyRoundTrip,
   evidenceStats, deriveEdges, parseCardinality, parseEvidence, parseType, parseTargets,
   addSignOffColumn, signOffCol, isSigned, signRow, unsignRow,
-  addObject, removeObject, renameObject, setNote, backlinks, composeCardinality,
+  addObject, removeObject, renameObject, setNote, createNote, backlinks, composeCardinality,
   removeColumn, parseHeader, blankMap, moveRow, moveObject,
   renderTargets, setRowTargets, ensureTable, setNoteLabel, removeNote,
 } from './parser.js';
@@ -501,6 +501,27 @@ console.log('\n=== 15. NOTES ARE FIRST CLASS: ADD, RENAME, DELETE ===\n');
     const o2 = d2.objects.find((o) => o.name === 'Edition');
     ok('it reads back with label and body', o2.notes.length === 1 &&
       o2.notes[0].label === 'Today' && o2.notes[0].body === 'Handled by hand in a spreadsheet.');
+  }
+
+  // createNote — "+ note" wants a note with nothing in it yet, which is exactly
+  // what setNote refuses to make. Regression: the button did nothing at all.
+  {
+    const doc = parseDocument(src);
+    const obj = doc.objects.find((o) => o.name === 'Edition');
+    ok('an empty note is created, not swallowed', !!createNote(obj, 'Note') && obj.notes.length === 1);
+    const out = serializeDocument(doc);
+    ok('an empty note writes no trailing space', out.includes('*Note:*\n'));
+    ok('file round-trips with an empty note', verifyRoundTrip(out).ok);
+    const back = parseDocument(out).objects.find((o) => o.name === 'Edition');
+    ok('the empty note reads back', back.notes.length === 1 &&
+      back.notes[0].label === 'Note' && back.notes[0].body === '');
+    // and typing into it behaves like any other note
+    setNote(back, 'Note', 'Written after the fact.');
+    ok('the body fills in', serializeDocument(parseDocument(out)) === out &&
+      back.notes[0].body === 'Written after the fact.');
+    // clearing it still deletes, which is how a note is removed by editing
+    setNote(back, 'Note', '');
+    ok('clearing the body still deletes the note', back.notes.length === 0);
   }
 }
 

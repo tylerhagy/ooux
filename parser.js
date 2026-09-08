@@ -447,7 +447,10 @@ export function serializeDocument(doc) {
       }
       if (seg.kind === 'definition') { out.push(lineText(ref, '**Definition:** ' + ref.text)); continue; }
       if (seg.kind === 'alsoCalled') { out.push(lineText(ref, '**Also called:** ' + ref.text)); continue; }
-      if (seg.kind === 'note') { out.push(lineText(ref, '*' + ref.label + ':* ' + ref.body)); continue; }
+      if (seg.kind === 'note') {
+        out.push(lineText(ref, ('*' + ref.label + ':* ' + ref.body).replace(/\s+$/, '')));
+        continue;
+      }
 
       if (seg.kind === 'table') {
         out.push(ref.header.dirty ? renderRow(ref.headerCells, '\n') : ref.header.src);
@@ -765,6 +768,23 @@ export function setNote(obj, label, body) {
 }
 
 /**
+ * Create a note outright, empty body and all.
+ *
+ * `setNote` DELETES a note whose body is empty — correct when you are editing,
+ * since clearing a note is how you remove it, but it made adding one
+ * impossible: "+ note" asked for a note with no body yet and got back null.
+ * Adding and clearing are different intents, so they get different functions.
+ */
+export function createNote(obj, label) {
+  const note = { src: EOL, dirty: true, label, body: '' };
+  obj.notes.push(note);
+  const tableIdx = obj.segments.findIndex((s) => s.kind === 'table');
+  const at = tableIdx > -1 ? tableIdx + 1 : obj.segments.length;
+  obj.segments.splice(at, 0, { kind: 'raw', src: EOL }, { kind: 'note', ref: note });
+  return note;
+}
+
+/**
  * Give an object an anatomy table if it has none, so a "+ row" on a
  * definition-only object works instead of dead-ending. Inserted after the
  * definition, before any trailer notes.
@@ -833,8 +853,8 @@ export function backlinks(doc, id) {
 
 /** Canonical cardinality options offered in the UI. `raw` stays authoritative. */
 export const CARDINALITIES = [
-  { value: '', label: '' },
-  { value: '—', label: 'n/a' },
+  { value: '', label: 'not asked' },
+  { value: '—', label: 'n/a — cannot apply' },
   { value: 'singular', label: 'singular' },
   { value: '0-many', label: '0-many' },
   { value: '1-many', label: '1-many' },

@@ -43,12 +43,37 @@ origin including the port, so a stable port is what makes the grant stick.
 
 That writes a starter file into the folder with one object in it. Rename that
 object by clicking its title, write a definition, then **+ row** under Core
-Content, Nested Objects or wherever it belongs. Add more objects with **+** next
+content, Relationships or wherever it belongs. Add more objects with **+** next
 to *Objects*.
 
-Relationships connect themselves: type `[[#Territory]]` as a nested row's name
-and, once an object called Territory exists, the chip under that row becomes a
-link and Territory's card gains a **Referenced by** entry pointing back.
+## How a card reads
+
+Name and definition first — what is this thing — then three groups, each with a
+colour of its own:
+
+- **Attributes** — *Core content*, then *Metadata*
+- **Relationships** — the nested objects
+- **Calls to action**
+
+Notes and *Referenced by* are asides, set smaller on purpose.
+
+Each section shows only the columns it has a question for. A call to action has
+no cardinality and no example, so those columns are not there. Values already in
+an older file stay visible either way.
+
+Relationships connect themselves. A nested row is a set of **chips**, not text:
+`+` adds one, and the box that opens completes against the objects already in
+the file. Name something that does not exist yet and the app offers to create
+it — a relationship can only point at an object that is really there, so there
+is no way to bank a chip that leads nowhere. Once Territory exists, its card
+gains a **Referenced by** entry pointing back.
+
+**Every object lives in the file that references it.** There is no such thing as
+a relationship to an object somewhere else — the app cannot make one, and a
+name with no object behind it is a loose end, not a category. Older files
+written with the `**Name**` cross-file syntax still open and still round-trip;
+the chip shows amber and says *no object*, and one click creates the object and
+relinks every row that names it.
 
 ## The file format
 
@@ -75,9 +100,13 @@ A file is a series of objects. An object is a heading whose body contains a
 
 - **Type** — `core` · `meta` · `nested` · `action · primary` ·
   `action · secondary`, or blank for an annotation row.
-- **Cardinality** — `singular` · `0-many` · `range`, optionally with a qualifier
-  (`0-many, point in time`) or a `?`. Anything else is kept verbatim and shown
-  as a conspicuous chip, because a cardinality nobody can pin down is a finding.
+- **Cardinality** — `singular` · `0-many` · `1-many` · `range` · `—` (cannot
+  apply), optionally with a qualifier (`0-many, point in time`) or a `?`. **Every
+  row offers the same menu.** A qualifier is not a different kind of cardinality,
+  so it does not get its own option: the kind is selected in the menu, the
+  qualifier is shown as a chip beneath the row, and changing one keeps the other.
+  Only genuinely unreadable free text is kept verbatim as a `(kept)` entry,
+  because a cardinality nobody can pin down is a finding.
 - **Note** — free text. `Q7`, ISO dates and `[[links]]` in it are indexed.
 - **Sign-off** — blank means open; `signed YYYY-MM-DD` means locked. New files
   include the column. Adding it to an existing file rewrites that one table once;
@@ -115,6 +144,18 @@ Saving is explicit (`⌘S`). Before writing, the file is re-read from disk and
 compared — if something else changed it (Obsidian, most likely), the write is
 blocked and you choose. The previous ten versions of each file are kept in
 IndexedDB.
+
+## Blank means blank
+
+One convention, everywhere: **an empty cell renders empty.** Nothing is drawn
+into it to stand in for the absence, because a placeholder mark and a real value
+look the same at a glance and the whole point of a map like this is being able
+to see, at a glance, what nobody has answered yet.
+
+The one em-dash in the app is a value you chose: `n/a — cannot apply` in the
+Cardinality column, which is a different statement from a Cardinality left as
+`not asked`. Hover a row and every editable field draws its own box, so you can
+see where the fields are without needing something printed inside them.
 
 ## Tests
 

@@ -60,8 +60,9 @@ behind someone's back.
 ```
 
 - `core` is content a user came for; `meta` is bookkeeping.
-- `nested` is a relationship. `[[#Name]]` points at an object in this file,
-  `**Name**` at one outside it, bare text means unresolved.
+- `nested` is a relationship, and it must point at an object defined in THIS
+  file: `[[#Name]]`. The older `**Name**` cross-file form and bare text still
+  parse, but ORCA marks them as loose ends and offers to create the object.
 - Cardinality: `singular`, `0-many`, `1-many`, a range, or `—` for not applicable.
 - Columns are matched **by name, not position**, so they can be reordered.
 

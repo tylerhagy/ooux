@@ -14,12 +14,12 @@
      source of truth for ORCA/jobmap/priority-guide. This is a manually-synced
      copy, not an @import (none of the three apps takes on a build step); see
      that file's README for how to re-check this block for drift. */
-  --bg: #f6f7f9; --panel: #fff; --ink: #16181d; --dim: #6b7280; --faint: #9aa1ac;
-  --line: rgba(16,18,22,.11); --line-2: rgba(16,18,22,.2);
-  --btn-face: transparent; --btn-face-hover: rgba(16,18,22,.055); --btn-line: transparent;
+  --bg: #f5f3ef; --panel: #fffefc; --ink: #1c1a17; --dim: #66615a; --faint: #9a948a;
+  --line: rgba(44,32,20,.10); --line-2: rgba(44,32,20,.19);
+  --btn-face: transparent; --btn-face-hover: rgba(44,32,20,.06); --btn-line: transparent;
   /* Two steps of hover for an editable field: the row-level tint that shows you
      WHICH cells are fields, and the stronger cell-level one under the pointer. */
-  --field-hover: rgba(16,18,22,.04); --field-edge: rgba(16,18,22,.14);
+  --field-hover: rgba(44,32,20,.04); --field-edge: rgba(44,32,20,.15);
   --scrim: rgba(16,18,22,.34);
   --accent: #2563eb; --accent-soft: rgba(37,99,235,.10); --on-accent: #fff;
   --warn: #9a6700; --warn-soft: rgba(154,103,0,.11);
@@ -34,7 +34,7 @@
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 28px; --s7: 96px;
   --ctrl-h: 28px; --ctrl-h-sm: 24px; --row-pad-y: 4px;
   --radius: 10px; --radius-sm: 7px; --ease: cubic-bezier(.22,.61,.36,1);
-  --shadow-sm: 0 1px 2px rgba(16,18,22,.04), 0 14px 34px -22px rgba(16,18,22,.30);
+  --shadow-sm: 0 1px 2px rgba(44,32,20,.05), 0 14px 34px -22px rgba(44,32,20,.28); --shadow-bar:0 1px 0 var(--line),0 6px 18px -14px rgba(44,32,20,.25); --shadow-accent:0 1px 2px rgba(37,99,235,.35);
   --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 @media (prefers-color-scheme: dark) {
@@ -50,6 +50,7 @@
     --ok: #30d158; --ok-soft: rgba(48,209,88,.14); --on-ok: #0e1a14;
     --flag: #ff9c52; --act: #ff6b5c; --none: #969ba6;
     --shadow-sm: 0 1px 2px rgba(0,0,0,.3), 0 14px 34px -22px rgba(0,0,0,.6);
+    --shadow-bar: 0 1px 0 var(--line), 0 6px 18px -14px rgba(0,0,0,.6);
     --oc-core: #64a9ff; --oc-meta: #f284cd; --oc-rel: #e3ae4c; --oc-cta: #45cf90;
   }
 }
@@ -257,6 +258,22 @@ tr, .sec, .grp { scroll-margin-top: 84px; }
 .empty-sec { font-size: var(--t-small); color: var(--faint); padding: 2px 0 var(--s3) 16px;
   font-style: italic; }
 
+/* back affordance + tabs ---------------------------------------------------- */
+.cardnav .backbtn { gap: 5px; padding: 0 10px 0 8px; height: 26px; font-weight: 600; }
+.cardnav .crumb-sep { color: var(--faint); margin: 0 -4px; }
+.tabs { position: sticky; top: 40px; z-index: 3; display: flex; gap: var(--s1);
+  background: var(--bg); border-bottom: 1px solid var(--line-2); margin: var(--s6) 0 var(--s4); }
+.tab { display: inline-flex; align-items: center; gap: 7px; padding: 9px 14px 10px; border: 0;
+  background: none; color: var(--dim); font: inherit; font-size: var(--t-ui); font-weight: 600;
+  cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; border-radius: 6px 6px 0 0; }
+.tab:hover { color: var(--ink); background: var(--btn-face-hover); }
+.tab[aria-selected=true] { color: var(--ink); border-bottom-color: var(--ink); }
+.tab-n { font-size: var(--t-small); font-weight: 400; color: var(--faint); font-variant-numeric: tabular-nums; }
+.panel[hidden] { display: none; }
+.panel-h { display: flex; align-items: center; gap: var(--s2); margin-bottom: var(--s3); }
+.panel-h .btn.add { margin-left: auto; }
+.backh { margin-top: var(--s6); }
+
 .ta { width: 100%; border: 1px solid transparent; background: none; border-radius: 6px;
   padding: 6px 8px; margin: 0 -8px; font: inherit; color: inherit; resize: none; }
 .ta:hover { border-color: var(--line); }
@@ -463,23 +480,7 @@ body[data-capture] #capScrim { display: flex; }
   background: var(--btn-face); border: 1px solid var(--btn-line); border-radius: 6px; padding: 0 6px; }
 .gbar .note { font-size: var(--t-small); color: var(--dim); font-variant-numeric: tabular-nums; }
 .gwrap { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); overflow: hidden; }
-svg.graph { display: block; width: 100%; height: 62vh; cursor: grab; touch-action: none; }
-svg.graph.drag { cursor: grabbing; }
-svg.graph .nd rect { fill: var(--bg); stroke: var(--line-2); stroke-width: 1; }
-svg.graph .nd text { font-size: 12px; fill: var(--ink); }
-svg.graph .nd.ghost rect { stroke-dasharray: 3 3; fill: none; }
-svg.graph .nd.ghost text { fill: var(--faint); }
-svg.graph .nd.sel rect { stroke: var(--accent); stroke-width: 2; fill: var(--accent-soft); }
-svg.graph .nd { cursor: pointer; }
-svg.graph .nd:hover rect { stroke: var(--accent); }
-svg.graph .eg { stroke: var(--line-2); stroke-width: 1.25; fill: none; }
-svg.graph .eg.signed { stroke: var(--ok); stroke-width: 1.75; }
-svg.graph .eg.contested { stroke: var(--warn); stroke-width: 1.5; stroke-dasharray: 5 3; }
-svg.graph .gq { font-size: 11px; font-weight: 600; fill: var(--warn); }
-svg.graph .gl { stroke: var(--line-2); stroke-width: 1.25; fill: none; }
-svg.graph .gl.open { fill: var(--panel); }
-svg.graph .dim { opacity: .18; }
-svg.graph .gnote { font-size: 10px; fill: var(--faint); letter-spacing: .06em; text-transform: uppercase; }
+.cybox { width: 100%; height: 62vh; min-height: 380px; background: var(--panel); }
 
 /* ---------------------------------------------------------------------------
    The graph is ONE framed instrument: canvas, then a plain-English readout of
@@ -490,6 +491,7 @@ svg.graph .gnote { font-size: 10px; fill: var(--faint); letter-spacing: .06em; t
 .gframe { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
   overflow: hidden; }
 .gbody { overflow: auto; max-height: 70vh; }
+.gbody:has(.cybox) { overflow: hidden; max-height: none; }
 .greadout { display: flex; align-items: center; gap: var(--s2); min-height: 34px;
   padding: 6px var(--s3); border-top: 1px solid var(--line); background: var(--bg);
   font-size: var(--t-body); color: var(--ink); }
@@ -591,7 +593,7 @@ body[data-present=true] #nameIn { font-size: var(--t-hero); max-width: none; }
 body[data-present=true] #defEdit { font-size: 21px; }
 body[data-present=true] .objhead { margin-bottom: var(--s6); }
 body[data-present=true] .cardnav { height: 56px; padding-right: 136px; }
-body[data-present=true] .grp-h, body[data-present=true] .sec .sec-h { top: 56px; }
+body[data-present=true] .tabs, body[data-present=true] .sec .sec-h { top: 56px; }
 .exit-present { display: none; position: fixed; top: 14px; right: var(--s4); z-index: 30; }
 body[data-present=true] .exit-present { display: block; }
 
@@ -604,12 +606,67 @@ body[data-present=true] :is(.btn.add, .addtarget, .lockbtn:not(.on), select.cell
 .welcome { max-width: 620px; margin: 8vh auto; text-align: center; }
 .welcome h1 { font-size: var(--t-display); margin-bottom: 6px; }
 .welcome p { color: var(--dim); }
+
+/* ===========================================================================
+   polish pass — hierarchy, spacing and affordance. Kept in one block, after the
+   base rules, so what changed is reviewable in one place. ORCA only: the shared
+   tokens in design-utilities are untouched until we decide the siblings follow.
+   =========================================================================== */
+header { min-height: 54px; padding: 10px var(--s5); box-shadow: var(--shadow-bar);
+  position: relative; z-index: 6; }
+.brand { display: inline-flex; align-items: center; gap: 9px; font-size: var(--t-title); font-weight: 650; }
+.brand .mark { flex: none; }
+.btn.primary { box-shadow: var(--shadow-accent); }
+.btn.primary:disabled { box-shadow: none; }
+
+#rail { padding: var(--s3) var(--s2); }
+.rail-h { margin: var(--s4) var(--s2) 6px; }
+.rail-item { padding: 6px 9px; border-radius: 8px; }
+.rail-item[aria-current=true] { background: var(--accent-soft); color: var(--accent); font-weight: 600; box-shadow: none; }
+.rail-item[aria-current=true] .ct { color: var(--accent); opacity: .7; }
+
+#stage { padding: 0 var(--s6) var(--s7); }
+.sigbar { border-radius: 99px; }
+.sigbar i { border-radius: 99px; }
+
+/* map: cards that read as objects you can open */
+.grid { grid-template-columns: repeat(auto-fill, minmax(236px, 1fr)); gap: var(--s4); padding-top: var(--s4); }
+.mini { display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch;
+  padding: var(--s4); border-radius: 12px; box-shadow: var(--shadow-sm);
+  transition: border-color 140ms var(--ease), box-shadow 140ms var(--ease), transform 140ms var(--ease); }
+.mini:hover { background: var(--panel); border-color: var(--accent); transform: translateY(-1px);
+  box-shadow: 0 1px 2px rgba(44,32,20,.06), 0 12px 28px -16px rgba(37,99,235,.35); }
+.mini h4 { font-size: var(--t-title); font-weight: 650; letter-spacing: -.01em; margin-bottom: 6px; }
+.mini .def { min-height: 2.9em; line-height: 1.45; margin-bottom: var(--s3); }
+.mini .sigbar { margin-bottom: var(--s2); height: 4px; }
+.mini .counts { margin-top: auto; }
+.mapnav { padding: var(--s5) 0 var(--s3); }
+.row-item { padding: 10px var(--s2); border-radius: 8px; }
+.row-item:hover { background: var(--panel); box-shadow: inset 2px 0 0 var(--accent); }
+
+/* detail: the object sits on a surface of its own */
+.cardnav { margin: 0 calc(var(--s6) * -1) var(--s4); padding: 0 var(--s6); height: 44px; }
+article.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+  padding: var(--s6) var(--s6) var(--s5); box-shadow: var(--shadow-sm); }
+article.card .tabs, article.card .sec .sec-h { background: var(--panel); }
+#nameIn { font-size: 30px; }
+.objhead { margin-bottom: var(--s4); }
+.sec-notes { margin-top: var(--s4); }
+.tabs { margin: var(--s5) calc(var(--s6) * -1) var(--s4); padding: 0 var(--s6); top: 44px; }
+.tab { font-weight: 550; color: var(--dim); padding: 11px 14px 12px; transition: color 140ms var(--ease), background 140ms var(--ease); }
+.tab[aria-selected=true] { color: var(--ink); border-bottom-color: var(--accent); border-bottom-width: 3px; }
+.tab-n { background: var(--btn-face-hover); border-radius: 99px; padding: 0 7px; font-size: var(--t-micro); min-width: 20px; text-align: center; line-height: 18px; }
+.tab[aria-selected=true] .tab-n { background: var(--accent-soft); color: var(--accent); }
+.panel-h { margin-bottom: var(--s2); }
+.panel-h .blurb { font-size: var(--t-body); }
+table.rows tbody tr:hover { background: var(--field-hover); }
+.cardfoot { margin-top: var(--s5); }
 </style>
 </head>
 <body>
 
 <header>
-  <span class="brand">object&nbsp;map</span>
+  <span class="brand"><svg class="mark" viewBox="0 0 32 32" width="22" height="22" aria-hidden="true"><rect width="32" height="32" rx="8" fill="rgb(208,52,44)"/><path d="M16 9L9 22M16 9l7 13M9 22h14" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="16" cy="9" r="3" fill="#fff"/><circle cx="9" cy="22" r="3" fill="#fff"/><circle cx="23" cy="22" r="3" fill="#fff"/></svg>object&nbsp;map</span>
   <button class="file" id="fileName" title="Open a different folder">
     <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 3.5h4.2l1.4 2h7.4v7.5a1 1 0 01-1 1H2.5a1 1 0 01-1-1z"/></svg>
     <span id="fileNameLabel">no folder open</span>
@@ -652,6 +709,7 @@ body[data-present=true] :is(.btn.add, .addtarget, .lockbtn:not(.on), select.cell
   </div>
 </div>
 
+<script src="vendor/cytoscape.min.js"></script>
 <script type="module">
 import {
   parseDocument, serializeDocument, verifyRoundTrip, refreshObjects,
@@ -739,6 +797,7 @@ const S = {
   selected: null, dirty: false, onlyMaps: true, capture: false, captured: 0,
   scroll: { map: 0, card: 0, source: 0, graph: 0 },
   graph: { focus: '', depth: 1, vb: null },
+  from: 'map', cardTab: 'core', cy: null,
 };
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -753,6 +812,7 @@ const GLYPH = {
   up: 'M8 12.5v-9M4 7.5L8 3.5l4 4',
   down: 'M8 3.5v9M4 8.5l4 4 4-4',
   tick: 'M3 8.4l3.2 3.1L13 4.8',
+  left: 'M12.5 8h-9M7.5 4l-4 4 4 4',
 };
 function icon(name, size = 13) {
   return `<svg viewBox="0 0 16 16" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="${GLYPH[name]}"/></svg>`;
@@ -1002,6 +1062,13 @@ function renderRail() {
 }
 
 function goTo(id) {
+  // Remember where the person came from, so Back returns to it — the Map
+  // (cards or list) or the Graph — not always the Map. Moving card-to-card
+  // keeps the original origin.
+  if (S.view === 'map' || S.view === 'graph') {
+    S.scroll[S.view] = $('stage').scrollTop;
+    S.from = S.view;
+  }
   S.selected = id;
   S.view = 'card';
   S.scroll.card = 0;
@@ -1009,6 +1076,19 @@ function goTo(id) {
   $('stage').scrollTop = 0;
   const sel = $('rail').querySelector('.rail-item[aria-current=true]');
   if (sel) sel.scrollIntoView({ block: 'nearest' });
+}
+
+function setTab(key) {
+  if (!document.getElementById('panel-' + key)) return;
+  S.cardTab = key;
+  document.querySelectorAll('#stage .tab').forEach((t) => t.setAttribute('aria-selected', String(t.dataset.tab === key)));
+  document.querySelectorAll('#stage .panel').forEach((p) => (p.hidden = p.id !== 'panel-' + key));
+}
+
+function goBack() {
+  S.view = S.from || 'map';
+  syncSegs(); renderStage(); renderRail();
+  $('stage').scrollTop = S.scroll[S.view] || 0;
 }
 
 /* ===========================================================================
@@ -1065,6 +1145,7 @@ async function doCapture() {
    =========================================================================== */
 function renderStage() {
   const stage = $('stage');
+  if (S.cy && S.view !== 'graph') { S.cy.destroy(); S.cy = null; }
   if (!S.doc) {
     stage.innerHTML = `<div class="welcome">
       <h1>object map</h1>
@@ -1249,110 +1330,6 @@ function buildGraph(doc, focusId, depth) {
   return { nodes: nds, edges: eds, directed: dir, focusId: keep ? focusId : null };
 }
 
-/* rings: focused object at the centre, its neighbours on a ring around it.
-   Crossing-free at depth 1, which is why it is the default once one object is
-   in focus. */
-function layoutRings(nodes, edges, focusId, W, H) {
-  if (!nodes.length) return;
-  const hub = nodes.find((n) => n.id === focusId) || nodes[0];
-  hub.x = W / 2; hub.y = H / 2;
-  const adj = new Map(nodes.map((n) => [n.id, new Set()]));
-  for (const e of edges) {
-    if (adj.has(e.from)) adj.get(e.from).add(e.to);
-    if (adj.has(e.to)) adj.get(e.to).add(e.from);
-  }
-  const near = adj.get(hub.id) || new Set();
-  const inner = nodes.filter((n) => n !== hub && near.has(n.id));
-  const outer = nodes.filter((n) => n !== hub && !near.has(n.id));
-  const ring = (list, r) => list.forEach((n, i) => {
-    const a = (i / Math.max(1, list.length)) * Math.PI * 2 - Math.PI / 2;
-    n.x = W / 2 + Math.cos(a) * r;
-    n.y = H / 2 + Math.sin(a) * r;
-  });
-  ring(inner, Math.min(W, H) * 0.31);
-  ring(outer, Math.min(W, H) * 0.47);
-}
-
-function layoutGraph(nodes, edges, W, H) {
-  const n = nodes.length;
-  if (!n) return;
-  const R = Math.min(W, H) * 0.36;
-  nodes.forEach((nd, i) => {
-    const a = (i / n) * Math.PI * 2 - Math.PI / 2;
-    nd.x = W / 2 + Math.cos(a) * R;
-    nd.y = H / 2 + Math.sin(a) * R;
-  });
-  const byId = new Map(nodes.map((nd) => [nd.id, nd]));
-  const links = edges.map((e) => ({ s: byId.get(e.from), t: byId.get(e.to) }))
-    .filter((l) => l.s && l.t && l.s !== l.t);
-  const ITER = 420;
-  for (let it = 0; it < ITER; it++) {
-    const k = 1 - it / ITER;
-    for (let i = 0; i < n; i++) {
-      for (let j = i + 1; j < n; j++) {
-        const A = nodes[i], B = nodes[j];
-        let dx = B.x - A.x, dy = B.y - A.y;
-        let d2 = dx * dx + dy * dy;
-        if (d2 < 1) { d2 = 1; dx = (i - j) || 1; dy = 1; }
-        const d = Math.sqrt(d2);
-        const rep = Math.min(40, 34000 / d2);
-        dx /= d; dy /= d;
-        A.x -= dx * rep * k; A.y -= dy * rep * k;
-        B.x += dx * rep * k; B.y += dy * rep * k;
-      }
-    }
-    for (const l of links) {
-      let dx = l.t.x - l.s.x, dy = l.t.y - l.s.y;
-      const d = Math.sqrt(dx * dx + dy * dy) || 1;
-      const f = (d - 210) * 0.02 * k;
-      dx /= d; dy /= d;
-      l.s.x += dx * f; l.s.y += dy * f;
-      l.t.x -= dx * f; l.t.y -= dy * f;
-    }
-    for (const nd of nodes) {
-      nd.x += (W / 2 - nd.x) * 0.007 * k;
-      nd.y += (H / 2 - nd.y) * 0.007 * k;
-    }
-  }
-}
-
-function boxExit(nd, tx, ty) {
-  const dx = tx - nd.x, dy = ty - nd.y;
-  if (!dx && !dy) return { x: nd.x, y: nd.y, ux: 1, uy: 0 };
-  const hw = nd.w / 2 + 2, hh = nd.h / 2 + 2;
-  const sx = dx ? hw / Math.abs(dx) : Infinity;
-  const sy = dy ? hh / Math.abs(dy) : Infinity;
-  const t = Math.min(sx, sy);
-  const len = Math.sqrt(dx * dx + dy * dy);
-  return { x: nd.x + dx * t, y: nd.y + dy * t, ux: dx / len, uy: dy / len };
-}
-
-function endGlyph(p, kind) {
-  const x = p.x, y = p.y, ux = p.ux, uy = p.uy;
-  const px = -uy, py = ux;
-  const at = (d, o) => [x + ux * d + px * (o || 0), y + uy * d + py * (o || 0)];
-  if (kind === null || kind === 'unknown') {
-    const c = at(6, 0);
-    return '<circle class="gl open" cx="' + c[0].toFixed(1) + '" cy="' + c[1].toFixed(1) + '" r="3.6"/>';
-  }
-  if (kind === 'n/a') return '';
-  if (kind === 'singular') {
-    const a = at(5, -6), b = at(5, 6);
-    return '<line class="gl" x1="' + a[0].toFixed(1) + '" y1="' + a[1].toFixed(1) +
-           '" x2="' + b[0].toFixed(1) + '" y2="' + b[1].toFixed(1) + '"/>';
-  }
-  if (kind === 'other' || kind === 'range') {
-    const t = at(11, 0);
-    return '<text class="gq" x="' + t[0].toFixed(1) + '" y="' + (t[1] + 3).toFixed(1) + '" text-anchor="middle">?</text>';
-  }
-  const b = at(12, 0);
-  return [-5.5, 0, 5.5].map((o) => {
-    const e = at(0, o);
-    return '<line class="gl" x1="' + b[0].toFixed(1) + '" y1="' + b[1].toFixed(1) +
-           '" x2="' + e[0].toFixed(1) + '" y2="' + e[1].toFixed(1) + '"/>';
-  }).join('');
-}
-
 const CARD_TOKEN = { singular: '1', '0-many': 'n', '1-many': '1n', range: 'r', other: '?', unknown: '-', 'n/a': '' };
 
 /* grid: an adjacency matrix. No crossings, scales past 60 objects, and a blank
@@ -1418,8 +1395,26 @@ function renderGraph(stage) {
     stage.innerHTML = '<p class="empty-note" style="padding-top:24px">No objects in this file.</p>';
     return;
   }
+  // Everything at once is a hairball past a dozen objects, so the graph opens on
+  // the object you were just looking at. "Everything" is one pick away.
+  if (!S.graph.seen) {
+    S.graph.seen = true;
+    if (!S.graph.focus) {
+      if (S.selected && S.doc.objects.some((o) => o.id === S.selected)) S.graph.focus = S.selected;
+      else {
+        // nothing selected yet: start from the most connected object
+        const deg = new Map();
+        for (const e of buildGraph(S.doc, '', 1).edges) {
+          deg.set(e.from, (deg.get(e.from) || 0) + 1); deg.set(e.to, (deg.get(e.to) || 0) + 1);
+        }
+        let best = '', top = 0;
+        for (const o of S.doc.objects) if ((deg.get(o.id) || 0) > top) { top = deg.get(o.id); best = o.id; }
+        S.graph.focus = best;
+      }
+    }
+  }
   const g = buildGraph(S.doc, S.graph.focus, S.graph.depth);
-  const mode = S.graph.mode || (S.graph.focus ? 'rings' : 'grid');
+  const mode = S.graph.mode === 'grid' ? 'grid' : 'graph';
   const open = g.edges.filter((e) => e.openEnd).length;
   const ghosts = g.nodes.filter((n) => n.ghost).length;
 
@@ -1447,92 +1442,12 @@ function renderGraph(stage) {
       K('contested', '<span class="sw contested"></span>', 'the two sides disagree') +
       K('inverse', '<span class="sw inv"></span>', 'only the opposite direction is stated');
   } else {
-    const W = 1200, H = 760;
-    const deg = new Map(g.nodes.map((n) => [n.id, 0]));
-    for (const e of g.edges) {
-      deg.set(e.from, (deg.get(e.from) || 0) + 1);
-      if (e.to !== e.from) deg.set(e.to, (deg.get(e.to) || 0) + 1);
-    }
-    const linked = g.nodes.filter((n) => deg.get(n.id));
-    const loose = g.nodes.filter((n) => !deg.get(n.id));
-    if (mode === 'rings') layoutRings(linked, g.edges, g.focusId || (linked[0] && linked[0].id), W, H);
-    else layoutGraph(linked, g.edges, W, H);
-
-    if (loose.length) {
-      let lx = Infinity, rx = -Infinity, by = -Infinity;
-      for (const n of linked) {
-        lx = Math.min(lx, n.x - n.w / 2); rx = Math.max(rx, n.x + n.w / 2); by = Math.max(by, n.y + n.h / 2);
-      }
-      if (!linked.length) { lx = 40; rx = W - 40; by = 40; }
-      let cx = lx, cy = by + 76;
-      for (const n of loose) {
-        if (cx + n.w > rx && cx > lx) { cx = lx; cy += 40; }
-        n.x = cx + n.w / 2; n.y = cy; cx += n.w + 14;
-      }
-    }
-
-    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-    for (const n of g.nodes) {
-      x0 = Math.min(x0, n.x - n.w / 2); x1 = Math.max(x1, n.x + n.w / 2);
-      y0 = Math.min(y0, n.y - n.h / 2); y1 = Math.max(y1, n.y + n.h / 2);
-    }
-    const pad = 48;
-    const box = g.nodes.length
-      ? (x0 - pad).toFixed(0) + ' ' + (y0 - pad).toFixed(0) + ' ' +
-        (x1 - x0 + pad * 2).toFixed(0) + ' ' + (y1 - y0 + pad * 2).toFixed(0)
-      : '0 0 ' + W + ' ' + H;
-
-    const byId = new Map(g.nodes.map((n) => [n.id, n]));
-    let svg = '';
-    for (const e of g.edges) {
-      const a = byId.get(e.from), b = byId.get(e.to);
-      if (!a || !b) continue;
-      const cls = 'eg' + (e.contested ? ' contested' : e.signed ? ' signed' : '');
-      const say = '<b>' + esc(a.name) + '</b> has ' + (PHRASE[e.toKind] || 'an unstated number of') +
-        ' <b>' + esc(b.name) + '</b>' +
-        (e.fromKind
-          ? '; <b>' + esc(b.name) + '</b> has ' + (PHRASE[e.fromKind] || 'an unstated number of') +
-            ' <b>' + esc(a.name) + '</b>'
-          : '; nobody has stated what <b>' + esc(b.name) + '</b> has') +
-        (e.signed ? ' <span class="tag signed">signed off</span>' : '') +
-        (e.contested ? ' <span class="tag contested">the two sides disagree</span>' : '') +
-        (e.openEnd && !e.contested ? ' <span class="tag open">one side unstated</span>' : '');
-      svg += '<g class="egrp" data-say="' + esc(say) + '">';
-      if (a === b) {
-        svg += '<path class="' + cls + '" d="M ' + (a.x - 10).toFixed(1) + ' ' +
-          (a.y - a.h / 2 - 2).toFixed(1) + ' a 26 26 0 1 1 20 0"/></g>';
-        continue;
-      }
-      const pa = boxExit(a, b.x, b.y), pb = boxExit(b, a.x, a.y);
-      svg += '<line class="' + cls + '" x1="' + pa.x.toFixed(1) + '" y1="' + pa.y.toFixed(1) +
-        '" x2="' + pb.x.toFixed(1) + '" y2="' + pb.y.toFixed(1) + '"/>';
-      svg += endGlyph(pb, e.toKind) + endGlyph(pa, e.fromKind) + '</g>';
-    }
-    if (loose.length) {
-      const y = Math.min.apply(null, loose.map((n) => n.y)) - 26;
-      const x = Math.min.apply(null, loose.map((n) => n.x - n.w / 2));
-      svg += '<text x="' + x.toFixed(0) + '" y="' + y.toFixed(0) +
-        '" class="gnote">connected to nothing yet</text>';
-    }
-    for (const n of g.nodes) {
-      const cls = 'nd' + (n.ghost ? ' ghost' : '') + (n.id === (g.focusId || S.selected) ? ' sel' : '');
-      const label = n.name.length > 24 ? n.name.slice(0, 23) + '…' : n.name;
-      const nsay = '<b>' + esc(n.name) + '</b>' + (n.ghost
-        ? ' — no object of this name exists yet'
-        : ' — click to open its card');
-      svg += '<g class="' + cls + '" data-node="' + esc(n.id) + '" data-say="' + esc(nsay) + '">' +
-        '<title>' + esc(n.name) + '</title>' +
-        '<rect x="' + (n.x - n.w / 2).toFixed(1) + '" y="' + (n.y - n.h / 2).toFixed(1) +
-        '" width="' + n.w + '" height="' + n.h + '" rx="6"/>' +
-        '<text x="' + n.x.toFixed(1) + '" y="' + (n.y + 4).toFixed(1) + '" text-anchor="middle">' +
-        esc(label) + '</text></g>';
-    }
-    body = '<svg class="graph" id="gSvg" viewBox="' + box +
-      '" preserveAspectRatio="xMidYMid meet">' + svg + '</svg>';
-    hint = 'Point at a line or a box to read the relationship in words.';
+    // Cytoscape draws this; wireGraph builds it once the container is in the DOM.
+    body = '<div class="cybox" id="cyBox"></div>';
+    hint = 'Click an object to put it in the centre. Double-click to open its card. Point at a line to read it in words.';
     keyHtml = G('Ends') +
       K('one', '<svg width="26" height="12"><line x1="0" y1="6" x2="16" y2="6"/><line x1="16" y1="0" x2="16" y2="12"/></svg>', 'one') +
-      K('many', '<svg width="26" height="12"><line x1="0" y1="6" x2="10" y2="6"/><line x1="10" y1="6" x2="22" y2="0"/><line x1="10" y1="6" x2="22" y2="6"/><line x1="10" y1="6" x2="22" y2="12"/></svg>', 'many') +
+      K('many', '<span class="tok">many</span>', 'many (1+ for at least one)') +
       K('open', '<svg width="26" height="12"><line x1="0" y1="6" x2="14" y2="6"/><circle cx="19" cy="6" r="3.6" class="openswatch"/></svg>', 'this side never stated') +
       G('Line') +
       K('stated', '<svg width="26" height="12"><line x1="0" y1="6" x2="24" y2="6"/></svg>', 'stated, not signed off') +
@@ -1550,10 +1465,10 @@ function renderGraph(stage) {
         '<option value="2" ' + (S.graph.depth === 2 ? 'selected' : '') + '>two steps</option>' +
       '</select>' +
       '<div class="seg" id="gMode">' +
+        '<button data-gmode="graph" aria-pressed="' + (mode === 'graph') + '" title="Focused object in the centre, neighbours around it">Graph</button>' +
         '<button data-gmode="grid" aria-pressed="' + (mode === 'grid') + '" title="Adjacency matrix: every relationship, no crossing lines">Grid</button>' +
-        '<button data-gmode="rings" aria-pressed="' + (mode === 'rings') + '" title="Focused object at the centre, neighbours around it">Rings</button>' +
-        '<button data-gmode="web" aria-pressed="' + (mode === 'web') + '" title="Force layout: clusters, at the cost of crossings">Web</button>' +
       '</div>' +
+      (S.graph.focus && S.doc.objects.some((o) => o.id === S.graph.focus) ? '<button class="btn sm" id="gOpen">Open card &rarr;</button>' : '') +
       '<span class="spacer" style="flex:1"></span>' +
       '<span class="note">' + g.nodes.length + ' objects &middot; ' + g.edges.length +
         ' relationships &middot; <b>' + open + '</b> with an unstated side</span>' +
@@ -1574,8 +1489,8 @@ function wireGraph(mode, hint) {
 
   $('gFocus').onchange = (e) => {
     S.graph.focus = e.target.value;
-    if (!S.graph.focus && S.graph.mode === 'rings') S.graph.mode = 'grid';
-    if (S.graph.focus && S.graph.mode === 'grid') S.graph.mode = 'rings';
+    if (S.graph.focus) { S.selected = S.graph.focus; renderRail(); }
+    if (S.graph.focus) S.graph.mode = 'graph';
     renderGraph($('stage'));
   };
   $('gDepth').onchange = (e) => { S.graph.depth = +e.target.value; renderGraph($('stage')); };
@@ -1622,48 +1537,176 @@ function wireGraph(mode, hint) {
     return;
   }
 
-  const svg = $('gSvg');
-  const home = svg.getAttribute('viewBox');
-  $('gFit').onclick = () => svg.setAttribute('viewBox', home);
-  svg.addEventListener('mouseover', (e) => {
-    const t = e.target.closest('[data-say]');
-    if (t) say(t.dataset.say);
+  const open = $('gOpen');
+  if (open) open.onclick = () => goTo(S.graph.focus);
+  drawCy(frame, say);
+}
+
+/* ---------------------------------------------------------------------------
+   The graph itself is Cytoscape.js (vendor/cytoscape.min.js), not a renderer of
+   our own. What stays ours is the vocabulary: which end is one, many or
+   unstated, and which lines are signed off or contested.
+   --------------------------------------------------------------------------- */
+const END = { singular: '1', '0-many': 'many', '1-many': '1+', range: '?', other: '?' };
+// Cytoscape's colour parser rejects `.10` (no leading zero), which our tokens use.
+function cssv(n) {
+  return getComputedStyle(document.documentElement).getPropertyValue(n).trim().replace(/([(,\s])\.(\d)/g, (m, a, d) => a + '0.' + d);
+}
+
+function drawCy(frame, say) {
+  const box = $('cyBox');
+  if (typeof cytoscape !== 'function') {
+    box.innerHTML = '<p class="empty-note" style="padding:24px">The graph library did not load.</p>';
+    return;
+  }
+  const g = buildGraph(S.doc, S.graph.focus, S.graph.depth);
+  const focus = g.focusId || S.selected;
+  const deg = new Map(g.nodes.map((n) => [n.id, 0]));
+  for (const e of g.edges) { deg.set(e.from, deg.get(e.from) + 1); if (e.to !== e.from) deg.set(e.to, deg.get(e.to) + 1); }
+
+  const els = [];
+  for (const n of g.nodes) {
+    els.push({ group: 'nodes', data: { id: n.id, label: n.name, say: '<b>' + esc(n.name) + '</b>' + (n.ghost
+      ? ' \u2014 no object of this name exists yet'
+      : ' \u2014 click to centre, double-click to open its card') },
+      classes: (n.ghost ? 'ghost ' : '') + (n.id === focus ? 'focus ' : '') + (deg.get(n.id) ? '' : 'loose') });
+  }
+  g.edges.forEach((e, i) => {
+    const a = g.nodes.find((n) => n.id === e.from), b = g.nodes.find((n) => n.id === e.to);
+    if (!a || !b) return;
+    const sayHtml = '<b>' + esc(a.name) + '</b> has ' + (PHRASE[e.toKind] || 'an unstated number of') +
+      ' <b>' + esc(b.name) + '</b>' +
+      (e.fromKind ? '; <b>' + esc(b.name) + '</b> has ' + (PHRASE[e.fromKind] || 'an unstated number of') + ' <b>' + esc(a.name) + '</b>'
+        : '; nobody has stated what <b>' + esc(b.name) + '</b> has') +
+      (e.signed ? ' <span class="tag signed">signed off</span>' : '') +
+      (e.contested ? ' <span class="tag contested">the two sides disagree</span>' : '') +
+      (e.openEnd && !e.contested ? ' <span class="tag open">one side unstated</span>' : '');
+    const isOne = (k) => k === 'singular', isMany = (k) => k === '0-many' || k === '1-many';
+    const cls = [e.contested ? 'contested' : e.signed ? 'signed' : 'stated',
+      e.openEnd ? 'open' : '', (isOne(e.toKind) || isOne(e.fromKind)) ? 'one' : '',
+      (isMany(e.toKind) || isMany(e.fromKind)) ? 'many' : ''].join(' ');
+    // target end = what `from` has of `to`; source end = what `to` has of `from`
+    const tk = e.toKind, sk = e.fromKind;
+    els.push({ group: 'edges', classes: cls, data: { id: 'e' + i, source: e.from, target: e.to, say: sayHtml,
+      tl: END[tk] || '', sl: END[sk] || '',
+      ts: isOne(tk) ? 'tee' : (!tk || tk === 'unknown') ? 'circle' : 'none',
+      ss: isOne(sk) ? 'tee' : (!sk || sk === 'unknown') ? 'circle' : 'none' } });
   });
-  svg.addEventListener('mouseleave', () => say(''));
-  svg.querySelectorAll('[data-node]').forEach((el) => {
-    el.onclick = () => {
-      const id = el.dataset.node;
-      if (S.doc.objects.some((o) => o.id === id)) goTo(id);
-    };
+
+  // Cytoscape ignores the alpha channel of line and border colours, so the
+  // translucent --line tokens would draw as solid ink. Use the solid greys.
+  const ink = cssv('--ink'), dim = cssv('--dim'), faint = cssv('--faint'), line2 = faint,
+    panel = cssv('--panel'), bg = cssv('--bg'), accent = cssv('--accent'), ok = cssv('--ok'), warn = cssv('--warn');
+  const font = getComputedStyle(document.body).fontFamily;
+  if (S.cy) { S.cy.destroy(); S.cy = null; }
+  const cy = S.cy = cytoscape({
+    container: box, elements: els, minZoom: .25, maxZoom: 2.5, wheelSensitivity: .25,
+    style: [
+      { selector: 'node', style: { shape: 'round-rectangle', label: 'data(label)', 'font-family': font,
+        'font-size': 12, color: ink, 'text-valign': 'center', 'text-halign': 'center',
+        width: 'label', height: 'label', padding: '9px', 'background-color': bg, 'background-opacity': 1,
+        'border-width': 1, 'border-color': line2, 'text-wrap': 'ellipsis', 'text-max-width': 170 } },
+      { selector: 'node.ghost', style: { 'border-style': 'dashed', 'background-opacity': 0, color: faint } },
+      { selector: 'node.loose', style: { color: dim } },
+      { selector: 'node.focus', style: { 'border-color': accent, 'border-width': 2, 'background-color': accent, 'background-opacity': .13, 'font-weight': 600 } },
+      { selector: 'node:active, node.hover', style: { 'border-color': accent, 'overlay-opacity': 0 } },
+      { selector: 'edge', style: { width: 1.25, 'line-color': line2, 'curve-style': 'bezier',
+        'control-point-step-size': 40, 'target-arrow-shape': 'data(ts)', 'source-arrow-shape': 'data(ss)',
+        'target-arrow-color': line2, 'source-arrow-color': line2, 'arrow-scale': 1.1,
+        'target-label': 'data(tl)', 'source-label': 'data(sl)', 'font-family': font, 'font-size': 10,
+        color: dim, 'target-text-offset': 24, 'source-text-offset': 24, 'text-background-color': panel,
+        'text-background-opacity': 1, 'text-background-padding': '2px', 'overlay-opacity': 0 } },
+      { selector: 'edge[ts = "circle"]', style: { 'target-arrow-fill': 'hollow' } },
+      { selector: 'edge[ss = "circle"]', style: { 'source-arrow-fill': 'hollow' } },
+      { selector: 'edge.signed', style: { 'line-color': ok, 'target-arrow-color': ok, 'source-arrow-color': ok, width: 2 } },
+      { selector: 'edge.contested', style: { 'line-color': warn, 'target-arrow-color': warn, 'source-arrow-color': warn, 'line-style': 'dashed', width: 1.75 } },
+      { selector: 'edge.hover', style: { width: 2.5, 'line-color': accent, 'target-arrow-color': accent, 'source-arrow-color': accent } },
+      { selector: '.faded', style: { opacity: .14 } },
+    ],
   });
-  const vb = () => svg.getAttribute('viewBox').split(/\s+/).map(Number);
-  svg.addEventListener('wheel', (e) => {
-    e.preventDefault();
-    const b = vb(), x = b[0], y = b[1], w = b[2], h = b[3];
-    const f = e.deltaY > 0 ? 1.12 : 1 / 1.12;
-    const r = svg.getBoundingClientRect();
-    const mx = x + ((e.clientX - r.left) / r.width) * w;
-    const my = y + ((e.clientY - r.top) / r.height) * h;
-    svg.setAttribute('viewBox', (mx - (mx - x) * f) + ' ' + (my - (my - y) * f) + ' ' + (w * f) + ' ' + (h * f));
-  }, { passive: false });
-  let drag = null;
-  svg.addEventListener('pointerdown', (e) => {
-    if (e.target.closest('[data-node]')) return;
-    drag = { x: e.clientX, y: e.clientY, vb: vb() };
-    svg.classList.add('drag');
-    svg.setPointerCapture(e.pointerId);
+
+  window.__cy = () => S.cy; // read by browser-test.mjs
+
+  // Layout. With one object in focus: concentric rings by distance from it.
+  // Without: a force layout on the connected part, started from a fixed circle
+  // so the same file always draws the same picture; unconnected objects are
+  // parked in a tidy grid underneath rather than flung to the edges.
+  const linked = cy.nodes().not('.loose'), loose = cy.nodes('.loose');
+  if (g.focusId && cy.getElementById(g.focusId).nonempty()) {
+    const dist = new Map();
+    cy.elements().bfs({ roots: cy.getElementById(g.focusId), directed: false,
+      visit: (v, e, u, i, depth) => { dist.set(v.id(), depth); } });
+    cy.nodes().layout({ name: 'concentric', animate: false, fit: false, padding: 40,
+      concentric: (n) => 10 - (dist.get(n.id()) || 0), levelWidth: () => 1,
+      minNodeSpacing: 36, spacingFactor: 1.15, avoidOverlap: true }).run();
+  } else {
+    const r = 60 + linked.length * 14;
+    linked.forEach((n, i) => { const a = (i / Math.max(1, linked.length)) * Math.PI * 2;
+      n.position({ x: Math.cos(a) * r, y: Math.sin(a) * r }); });
+    if (linked.length) linked.layout({ name: 'cose', animate: false, randomize: false, fit: false,
+      nodeRepulsion: () => 90000, idealEdgeLength: () => 190, edgeElasticity: () => 80,
+      nodeOverlap: 24, gravity: .5, numIter: 1500 }).run();
+  }
+  if (loose.nonempty() && !(g.focusId)) {
+    const bb = linked.nonempty() ? linked.boundingBox() : { x1: 0, x2: 600, y2: -60 };
+    let x = bb.x1, y = bb.y2 + 70;
+    loose.forEach((n) => {
+      const w = n.outerWidth();
+      if (x + w > Math.max(bb.x2, bb.x1 + 700) && x > bb.x1) { x = bb.x1; y += 44; }
+      n.position({ x: x + w / 2, y }); x += w + 14;
+    });
+  }
+  // A force layout of two or three objects leaves them nearly touching, and the
+  // end labels need room. Open the whole picture up until the closest pair of
+  // related objects is a readable distance apart.
+  if (!g.focusId && cy.edges().nonempty()) {
+    let min = Infinity;
+    cy.edges().forEach((e) => {
+      const a = e.source().position(), b = e.target().position();
+      const d = Math.hypot(a.x - b.x, a.y - b.y); if (d > 1) min = Math.min(min, d);
+    });
+    if (min < 210) { const k = Math.min(4, 210 / min);
+      linked.forEach((n) => n.position({ x: n.position('x') * k, y: n.position('y') * k })); }
+  }
+  cy.fit(undefined, 40);
+  const home = () => cy.animate({ fit: { padding: 40 } }, { duration: 160 });
+  const fit = $('gFit'); if (fit) fit.onclick = home;
+  if (cy.zoom() > 1) cy.zoom({ level: 1, renderedPosition: { x: box.clientWidth / 2, y: box.clientHeight / 2 } }), cy.center();
+
+  // Reading and pointing. Point at a thing to read it; the neighbourhood lights.
+  cy.on('mouseover', 'node', (ev) => {
+    const n = ev.target; n.addClass('hover'); say(n.data('say'));
+    const hood = n.closedNeighborhood(); cy.elements().not(hood).addClass('faded');
+    box.style.cursor = 'pointer';
   });
-  svg.addEventListener('pointermove', (e) => {
-    if (!drag) return;
-    const r = svg.getBoundingClientRect();
-    const x = drag.vb[0], y = drag.vb[1], w = drag.vb[2], h = drag.vb[3];
-    svg.setAttribute('viewBox',
-      (x - ((e.clientX - drag.x) / r.width) * w) + ' ' +
-      (y - ((e.clientY - drag.y) / r.height) * h) + ' ' + w + ' ' + h);
+  cy.on('mouseout', 'node', (ev) => { ev.target.removeClass('hover'); cy.elements().removeClass('faded'); say(''); box.style.cursor = ''; });
+  cy.on('mouseover', 'edge', (ev) => { ev.target.addClass('hover'); say(ev.target.data('say')); });
+  cy.on('mouseout', 'edge', (ev) => { ev.target.removeClass('hover'); say(''); });
+  cy.on('tap', 'node', (ev) => {
+    const id = ev.target.id();
+    if (ev.target.hasClass('ghost')) return;
+    if (id === S.graph.focus) return;
+    S.graph.focus = id; S.graph.mode = 'graph';
+    if (S.doc.objects.some((o) => o.id === id)) { S.selected = id; renderRail(); }
+    renderGraph($('stage'));
   });
-  const stop = () => { drag = null; svg.classList.remove('drag'); };
-  svg.addEventListener('pointerup', stop);
-  svg.addEventListener('pointercancel', stop);
+  cy.on('dbltap', 'node', (ev) => {
+    const id = ev.target.id();
+    if (S.doc.objects.some((o) => o.id === id)) goTo(id);
+  });
+
+  // The key is a control: pointing at an item dims everything it does not describe.
+  const MATCH = { signed: 'edge.signed', contested: 'edge.contested', stated: 'edge.stated',
+    open: 'edge.open', one: 'edge.one', many: 'edge.many', ghost: 'node.ghost' };
+  const lit = () => {
+    cy.elements().removeClass('faded');
+    const k = frame.getAttribute('data-hl');
+    if (!k || !MATCH[k]) return;
+    const m = cy.elements(MATCH[k]);
+    cy.elements().not(m.union(m.connectedNodes())).addClass('faded');
+  };
+  new MutationObserver(lit).observe(frame, { attributes: true, attributeFilter: ['data-hl'] });
+  window.addEventListener('resize', () => { if (S.cy === cy) cy.resize(); });
 }
 
 /* The Example column is optional — a map that has no `Example` header gets the
@@ -1744,7 +1787,10 @@ function renderCard(stage) {
 
   // Neighbour names live in titles, not labels — as labels they changed the
   // bar's geometry on every object.
+  const backLabel = S.from === 'graph' ? 'Graph' : 'Objects';
   let html = `<div class="cardnav">
+    <button class="btn backbtn" id="backBtn" title="Back to ${backLabel.toLowerCase()} (Esc)">${icon('left', 12)}<span>${backLabel}</span></button>
+    <span class="crumb-sep" aria-hidden="true">/</span>
     <button class="btn navbtn" id="prevObj" ${prev ? '' : 'disabled'} title="${prev ? 'Previous: ' + esc(prev.name) + ' (←)' : 'First object'}">&lsaquo;</button>
     <button class="btn navbtn" id="nextObj" ${next ? '' : 'disabled'} title="${next ? 'Next: ' + esc(next.name) + ' (→)' : 'Last object'}">&rsaquo;</button>
     <span class="navname">${esc(obj.name)}</span>
@@ -1780,44 +1826,35 @@ function renderCard(stage) {
   }
   html += `</section>`;
 
-  // Bucket the sections into their ORCA groups first, so a group that holds one
-  // kind can merge its two headings into one line instead of stacking a title
-  // on a title that says nearly the same word.
-  const groups = [];
-  for (const sec of SECTIONS) {
-    const list = rows.map((r, i) => ({ r, i })).filter(({ r }) => sec.match(r));
-    if (!list.length && sec.key === 'other') continue;
-    const g = groups.find((x) => x.name === sec.group);
-    if (g) { g.secs.push({ sec, list }); g.count += list.length; }
-    else groups.push({ name: sec.group, secs: [{ sec, list }], count: list.length });
-  }
+  // Tabs, one per kind of row. The choice lives in S.cardTab, so bouncing
+  // between objects keeps you on the same tab. Every panel is rendered and the
+  // inactive ones hidden, so row indexes, focus and wiring are unaffected.
+  const panels = SECTIONS
+    .map((sec) => ({ sec, list: rows.map((r, i) => ({ r, i })).filter(({ r }) => sec.match(r)) }))
+    .filter(({ sec, list }) => sec.key !== 'other' || list.length);
+  if (!panels.some(({ sec }) => sec.key === S.cardTab)) S.cardTab = panels[0].sec.key;
+  const back = backlinks(S.doc, obj.id);
+  const TABNAME = { core: 'Attributes', meta: 'Metadata', nested: 'Relationships', action: 'Calls to action', other: 'Annotations' };
 
-  for (const g of groups) {
-    let headed = false;
-    const solo = g.secs.length === 1 ? g.secs[0].sec : null;
-    html += `<section class="grp"><div class="grp-h">` +
-      (solo ? `<span class="dot ${solo.key}"></span>` : '') +
-      `<span class="grp-t">${esc(g.name)}</span>` +
-      `<span class="grp-n">${g.count || ''}</span>` +
-      (solo ? `<span class="blurb">${esc(solo.blurb)}</span>` : '') +
-      (solo && !ro ? `<button class="btn add" data-add="${solo.key}">+ row</button>` : '') +
-      `</div>`;
-    for (const { sec, list } of g.secs) {
-      if (!solo) {
-        html += `<div class="sub"><div class="sub-h"><span class="dot ${sec.key}"></span>` +
-          `<span class="sub-t">${sec.label}</span>` +
-          `<span class="sub-n">${list.length || ''}</span>` +
-          `<span class="blurb">${esc(sec.blurb)}</span>` +
-          (ro ? '' : `<button class="btn add" data-add="${sec.key}">+ row</button>`) + `</div>`;
-      }
-      if (!list.length) html += `<p class="empty-sec">Nothing here yet.</p>`;
+  html += `<div class="tabs" role="tablist" aria-label="${esc(obj.name)} sections">` +
+    panels.map(({ sec, list }, n) => {
+      const cnt = list.length;
+      return `<button class="tab" role="tab" id="tab-${sec.key}" data-tab="${sec.key}" aria-selected="${sec.key === S.cardTab}" aria-controls="panel-${sec.key}" title="${esc(sec.blurb)} (${n + 1})">` +
+        `<span class="dot ${sec.key}"></span>${TABNAME[sec.key] || sec.label}<span class="tab-n">${cnt || ''}</span></button>`;
+    }).join('') + `</div>`;
+
+  for (const { sec, list } of panels) {
+    html += `<section class="panel" role="tabpanel" id="panel-${sec.key}" aria-labelledby="tab-${sec.key}" ${sec.key === S.cardTab ? '' : 'hidden'}>` +
+      `<div class="panel-h"><span class="blurb">${esc(sec.blurb[0].toUpperCase() + sec.blurb.slice(1))}</span>` +
+      (ro || sec.key === 'other' ? '' : `<button class="btn add" data-add="${sec.key}">+ row</button>`) + `</div>`;
+    if (!list.length) html += `<p class="empty-sec">Nothing here yet.</p>`;
     if (list.length) {
       // A column is shown when the section has a question for it, or when rows
       // already carry a value — data is never hidden, only unasked-for prompts.
       const hasCard = sec.cols.card || list.some(({ r }) => (r.cells[C.cardinality] || '').trim());
       const hasEx = C.example >= 0 &&
         (sec.cols.example || list.some(({ r }) => (r.cells[C.example] || '').trim()));
-      const thead = headed ? '' : (headed = true, THEAD(hasEx, hasCard));
+      const thead = THEAD(hasEx, hasCard);
       html += `<table class="rows">${COLS(hasEx, hasCard)}${thead}<tbody>`;
       for (const { r, i } of list) {
         const signed = signable(r) && isSigned(r, col);
@@ -1841,24 +1878,21 @@ function renderCard(stage) {
       }
       html += '</tbody></table>';
     }
-      if (!solo) html += `</div>`;
+
+    if (sec.key === 'nested' && back.length) {
+      html += `<div class="sub-h backh"><span class="sub-t">Referenced by</span><span class="sub-n">${back.length}</span></div>` +
+        `<div class="backlinks">` +
+        `<div class="bh">Object</div><div class="bh">Cardinality</div><div class="bh">Why</div>`;
+      for (const b of back) {
+        const card = b.row.cardinality.raw.replace(/\*\*/g, '').trim();
+        const why = (b.row.cells[b.row.cols ? b.row.cols.note : 4] || '').replace(/\*\*/g, '').trim();
+        html += `<div class="bc from"><button data-goto="${esc(b.from.id)}">${esc(b.from.name)}</button></div>` +
+          `<div class="bc card${card ? '' : ' blank'}">${esc(card || 'not asked')}</div>` +
+          `<div class="bc note${why ? '' : ' blank'}">${esc(why || 'no note')}</div>`;
+      }
+      html += `</div>`;
     }
     html += `</section>`;
-  }
-
-  const back = backlinks(S.doc, obj.id);
-  if (back.length) {
-    html += `<section class="sec"><div class="sec-h">Referenced by<span class="ct">${back.length}</span></div>` +
-      `<div class="backlinks">` +
-      `<div class="bh">Object</div><div class="bh">Cardinality</div><div class="bh">Why</div>`;
-    for (const b of back) {
-      const card = b.row.cardinality.raw.replace(/\*\*/g, '').trim();
-      const why = (b.row.cells[b.row.cols ? b.row.cols.note : 4] || '').replace(/\*\*/g, '').trim();
-      html += `<div class="bc from"><button data-goto="${esc(b.from.id)}">${esc(b.from.name)}</button></div>` +
-        `<div class="bc card${card ? '' : ' blank'}">${esc(card || 'not asked')}</div>` +
-        `<div class="bc note${why ? '' : ' blank'}">${esc(why || 'no note')}</div>`;
-    }
-    html += `</div></section>`;
   }
 
   html += `<div class="cardfoot">
@@ -1920,6 +1954,8 @@ function targetChips(row, i, locked) {
 function wireCard(obj, col, prev, next, C) {
   const stage = $('stage');
   const P = $('prevObj'), N = $('nextObj');
+  const B = $('backBtn'); if (B) B.onclick = goBack;
+  stage.querySelectorAll('.tab').forEach((t) => (t.onclick = () => setTab(t.dataset.tab)));
   if (P && prev) P.onclick = () => goTo(prev.id);
   if (N && next) N.onclick = () => goTo(next.id);
   stage.querySelectorAll('[data-goto]').forEach((el) => (el.onclick = () => goTo(el.dataset.goto)));
@@ -2439,6 +2475,7 @@ document.addEventListener('keydown', (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); commitActive(); save(); return; }
   if (e.key === 'Escape' && S.present) { S.present = false; syncSegs(); renderStage(); return; }
   if (e.key === 'Escape' && S.capture) { setCapture(false); return; }
+  if (e.key === 'Escape' && S.view === 'card' && !S.present && !(e.target.closest && e.target.closest('input,textarea,select'))) { goBack(); return; }
   const typing = /^(INPUT|TEXTAREA|SELECT)$/.test((e.target.tagName || '')) || e.target.isContentEditable;
   if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
   if (e.key === 'p' || e.key === 'P') { e.preventDefault(); togglePresent(); return; }
@@ -2455,6 +2492,10 @@ document.addEventListener('keydown', (e) => {
     }
     syncSegs(); renderStage(); renderRail();
     return;
+  }
+  if (S.view === 'card' && /^[1-5]$/.test(e.key)) {
+    const t = document.querySelectorAll('#stage .tab')[+e.key - 1];
+    if (t) { e.preventDefault(); setTab(t.dataset.tab); return; }
   }
   if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
     e.preventDefault();

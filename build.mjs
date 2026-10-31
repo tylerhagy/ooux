@@ -55,6 +55,15 @@ const block = '\n// ---- parser.js, inlined by build.mjs. Edit parser.js, never 
   + '// ---- end of parser.js ----\n';
 let out = html.replace(importStmt, () => block);
 
+// Vendored classic scripts (cytoscape) are inlined too, so the output is still
+// one file. A function replacer, for the same $-expansion reason as above, and
+// a guard because a literal </script> inside the library would end the tag.
+out = out.replace(/<script src="(vendor\/[^"]+)"><\/script>/g, (m, rel) => {
+  const lib = readFileSync(path.join(HERE, rel), 'utf8');
+  if (/<\/script/i.test(lib)) die(rel + ' contains </script> and cannot be inlined');
+  return '<script>/* ' + rel + ' (inlined by build.mjs) */\n' + lib + '\n</script>';
+});
+
 /** Cut `if (location.protocol === 'file:') { … }`, however its body is written. */
 function dropGuard(src) {
   const at = src.indexOf("if (location.protocol === 'file:') {");

@@ -48,14 +48,17 @@ to *Objects*.
 
 ## How a card reads
 
-Name and definition first — what is this thing — then three groups, each with a
-colour of its own:
+Name and definition first — what is this thing — then one tab per kind of row,
+each with a colour of its own. The tab you pick stays selected as you move
+between objects (keys **1**–**4** switch tabs):
 
-- **Attributes** — *Core content*, then *Metadata*
-- **Relationships** — the nested objects
+- **Attributes** — core content
+- **Metadata**
+- **Relationships** — the nested objects, with *Referenced by* at the bottom
 - **Calls to action**
 
-Notes and *Referenced by* are asides, set smaller on purpose.
+**← Objects** (or **Esc**) goes back to the map — or the graph, if that is where
+you came from. Notes sit above the tabs as an aside.
 
 Each section shows only the columns it has a question for. A call to action has
 no cardinality and no example, so those columns are not there. Values already in
@@ -189,11 +192,25 @@ repo — the fixture is a library catalogue.
   object highlighted.
 - **⌘S** saves. Chrome asks for write permission separately the first time.
 
+## The graph
+
+**Graph** (next to Map in the header) draws the relationships with
+[Cytoscape.js](https://js.cytoscape.org), vendored in `vendor/` and inlined by
+`build.mjs`, so the app is still one offline file. It opens on the object you
+were just looking at, with its neighbours around it.
+
+- Click an object to put it in the centre; double-click, or **Open card →**,
+  to open its card. The focus picker's *Everything* shows the whole map.
+- Each end of a line says *1*, *many*, *1+*, or a hollow circle for an end
+  nobody has stated. Green lines are signed off; dashed amber lines are ones
+  the two sides disagree about.
+- Pointing at a line reads the relationship in words; the key highlights what
+  it describes. **Grid** is the same relationships as a matrix.
+
 ## Not built yet
 
 - Adding an anatomy table to an object that has none
 - Prioritized anatomy ordering (currently always shows as "not done")
-- Graph view
 - Import from the looser narrative object-map format
 
 ## Using it with an AI agent

@@ -211,6 +211,7 @@ ok('Done closes capture', !(await page.locator('#capScrim').isVisible()));
 await page.locator('.rail-row', { hasText: 'Book' }).locator('.rail-item').click();
 await page.waitForTimeout(150);
 eq('the rail selects Book', await page.locator('#nameIn').inputValue(), 'Book');
+await page.click('#tab-nested');
 ok('its relationship row shows a chip to Author', await page.locator('.chip:has-text("Author")').isVisible());
 
 await page.locator('.chip:has-text("Author") .tlbl').click();
@@ -245,6 +246,7 @@ const confirmIfAsked = async () => {
     await page.waitForTimeout(150);
   }
 };
+await page.click('#tab-core');
 const lock = page.locator('tr[data-idx="0"] .lockbtn').first();
 ok('a row can be signed off', await lock.getAttribute('aria-pressed') === 'false');
 await lock.click();
@@ -282,6 +284,40 @@ await key('s');
 await page.waitForTimeout(150);
 ok('S again returns to Map, unchanged from before', await page.locator('.mini').count() > 0);
 ok('and not to a Card', await page.locator('#nameIn').count() === 0);
+
+// ---------------------------------------------------------------- back, tabs, graph
+await page.locator('#viewSeg button[data-view="map"]').click();
+await page.waitForSelector('.mini');
+await page.click('.mini[data-id="book"]');
+await page.waitForSelector('.card');
+ok('the object bar has a Back button', await page.locator('#backBtn').isVisible());
+await page.click('#tab-action');
+eq('picking a tab shows its panel', await page.locator('#panel-action').isVisible(), true);
+eq('and hides the others', await page.locator('#panel-core').isVisible(), false);
+await page.click('#nextObj');
+await page.waitForTimeout(150);
+eq('the tab stays selected on the next object', await page.getAttribute('#tab-action', 'aria-selected'), 'true');
+await page.click('#backBtn');
+await page.waitForSelector('.mini');
+ok('Back returns to the map cards', await page.locator('.mini').count() > 0);
+await page.click('.mini[data-id="book"]');
+await page.waitForSelector('.card');
+await page.keyboard.press('Escape');
+await page.waitForSelector('.mini');
+ok('Escape also goes back', await page.locator('.mini').count() > 0);
+
+await page.locator('#viewSeg button[data-view="graph"]').click();
+await page.waitForSelector('#cyBox canvas', { timeout: 5000 });
+ok('the graph is drawn by Cytoscape', await page.locator('#cyBox canvas').count() > 0);
+const nodes = () => page.evaluate(() => window.__cy().nodes().length);
+ok('the graph opens on one object and its neighbours', (await nodes()) >= 2);
+await page.evaluate(() => {
+  const n = window.__cy().nodes().filter((x) => !x.hasClass('ghost'))[1];
+  window.__target = n.id();
+  n.emit('tap');
+});
+await page.waitForTimeout(250);
+eq('tapping a node puts it in the centre (focus)', await page.inputValue('#gFocus'), await page.evaluate(() => window.__target));
 
 // ---------------------------------------------------------------- save round-trips
 await save();

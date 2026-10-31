@@ -31,6 +31,7 @@
   --oc-core: #2563a8; --oc-meta: #a3387f; --oc-rel: #96680f; --oc-cta: #17724a;
   --t-micro: 11px; --t-small: 12.5px; --t-body: 13.5px; --t-ui: 14px; --t-title: 16px;
   --t-lede: 17px; --t-display: 28px; --t-hero: 38px;
+  --bar-h: 52px;
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 28px; --s7: 96px;
   --ctrl-h: 28px; --ctrl-h-sm: 24px; --row-pad-y: 4px;
   --radius: 10px; --radius-sm: 7px; --ease: cubic-bezier(.22,.61,.36,1);
@@ -612,7 +613,7 @@ body[data-present=true] :is(.btn.add, .addtarget, .lockbtn:not(.on), select.cell
    base rules, so what changed is reviewable in one place. ORCA only: the shared
    tokens in design-utilities are untouched until we decide the siblings follow.
    =========================================================================== */
-header { min-height: 54px; padding: 10px var(--s5); box-shadow: var(--shadow-bar);
+header { height: var(--bar-h); min-height: 0; padding: 0 var(--s5); box-shadow: var(--shadow-bar);
   position: relative; z-index: 6; }
 .brand { display: inline-flex; align-items: center; gap: 9px; font-size: var(--t-title); font-weight: 650; }
 .brand .mark { flex: none; }
